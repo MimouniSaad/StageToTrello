@@ -14,7 +14,9 @@ LIST_NAME = os.environ.get("TRELLO_LIST", "Stages")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MAX_PROMPT_CHARS = 10000   # reste sous la limite de tokens par minute de l'offre gratuite
 
-AUTH = {"key": KEY, "token": TOKEN}
+# Clé et jeton dans un en-tête (et non dans l'URL) pour qu'ils n'apparaissent jamais
+# dans les messages d'erreur de requests.
+AUTH_HEADER = {"Authorization": f'OAuth oauth_consumer_key="{KEY}", oauth_token="{TOKEN}"'}
 API = "https://api.trello.com/1"
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -195,10 +197,21 @@ def build_info(url, meta, text, jp, label_names):
 
 
 # ---------- Trello ----------
+def trello(method, path, **params):
+    """Appel à l'API Trello ; lève une erreur lisible si Trello refuse la requête."""
+    try:
+        r = requests.request(method, f"{API}{path}", headers=AUTH_HEADER,
+                             params=params, timeout=20)
+    except requests.RequestException as e:
+        raise RuntimeError(f"Trello injoignable : {type(e).__name__}") from None
+    if not r.ok:
+        raise RuntimeError(f"Erreur Trello {r.status_code} sur {path} : {r.text.strip()[:200]}")
+    return r.json()
+
+
 def board_labels(board_id):
-    labels = requests.get(f"{API}/boards/{board_id}/labels", params=AUTH).json()
     by_name = {}
-    for l in labels:
+    for l in trello("GET", f"/boards/{board_id}/labels"):
         if l.get("name"):
             by_name.setdefault(l["name"], l["id"])
     return by_name
@@ -206,21 +219,31 @@ def board_labels(board_id):
 
 def list_boards():
     """Tableaux ouverts de l'utilisateur, avec leurs listes ouvertes."""
-    boards = requests.get(f"{API}/members/me/boards", params={
-        **AUTH, "fields": "name", "filter": "open", "lists": "open"}).json()
+    boards = trello("GET", "/members/me/boards", fields="name", filter="open", lists="open")
     return [{"id": b["id"], "name": b["name"],
              "lists": [{"id": l["id"], "name": l["name"]} for l in b.get("lists", [])]}
             for b in boards]
 
 
+def find_list(board_id, name):
+    lists = trello("GET", f"/boards/{board_id}/lists")
+    for l in lists:
+        if l["name"] == name:
+            return l["id"]
+    names = ", ".join(l["name"] for l in lists) or "aucune"
+    raise RuntimeError(f"Liste « {name} » introuvable sur le tableau (listes : {names}). "
+                       "Corrige TRELLO_LIST dans .env ou choisis la liste dans le popup.")
+
+
 def create_card(url, info, list_id, by_name):
     label_ids = [by_name[n] for n in info["labels"] if n in by_name]
     name = f"{info['company']} - {info['title']}"
-    card = requests.post(f"{API}/cards", params={
-        **AUTH, "idList": list_id, "name": name,
-        "desc": info["desc"][:16000], "idLabels": ",".join(label_ids)}).json()
-    requests.post(f"{API}/cards/{card['id']}/attachments",
-                  params={**AUTH, "url": url})
+    card = trello("POST", "/cards", idList=list_id, name=name,
+                  desc=info["desc"][:16000], idLabels=",".join(label_ids))
+    try:
+        trello("POST", f"/cards/{card['id']}/attachments", url=url)
+    except RuntimeError as e:  # la carte existe déjà : on ne fait pas échouer l'ajout
+        print(f"Lien non joint à la carte : {e}")
     print(f"Carte créée : {card['shortUrl']}")
     print(f"  Titre      : {name}")
     print(f"  Étiquettes : {info['labels']}")
@@ -235,8 +258,7 @@ def main(url, page_html=None, board_id=None, list_id=None):
     by_name = board_labels(board_id)
     label_names = list(by_name)
     if not list_id:
-        lists = requests.get(f"{API}/boards/{board_id}/lists", params=AUTH).json()
-        list_id = next(l["id"] for l in lists if l["name"] == LIST_NAME)
+        list_id = find_list(board_id, LIST_NAME)
 
     info = None
     # Si l'extension fournit la page déjà rendue, on l'essaie en premier
