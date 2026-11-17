@@ -1,0 +1,11 @@
+[Unit]
+Description=Serveur Stage vers Trello
+
+[Service]
+WorkingDirectory=%h/stage-trello
+EnvironmentFile=%h/stage-trello/.env
+ExecStart=%h/stage-trello/venv/bin/python %h/stage-trello/server.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

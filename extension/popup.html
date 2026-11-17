@@ -1,0 +1,29 @@
+cat > popup.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 14px sans-serif; width: 300px; margin: 12px; }
+    label { display: block; margin-top: 8px; font-weight: 600; }
+    label.auto { font-weight: normal; margin-top: 10px; }
+    select, button { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 12px; cursor: pointer; }
+    #status { margin-top: 10px; min-height: 1.2em; word-break: break-word; }
+    .ok { color: #2e7d32; }
+    .err { color: #c62828; }
+  </style>
+</head>
+<body>
+  <label for="board">Tableau</label>
+  <select id="board"></select>
+  <label for="list">Liste</label>
+  <select id="list"></select>
+  <label class="auto"><input type="checkbox" id="auto"> Envoyer dès l'ouverture</label>
+  <button id="add">Ajouter à Trello</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
+EOF
