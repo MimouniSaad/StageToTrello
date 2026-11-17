@@ -74,6 +74,7 @@ async function extractInfo(page, labelNames, jp) {
     try {
       return await Groq.llmExtract(page.url, page.meta, page.text, labelNames, {
         apiKey: CONFIG.GROQ_API_KEY, models: CONFIG.GROQ_MODELS,
+        rounds: 2, maxWaitS: 10,  // le popup se ferme si l'utilisateur clique ailleurs : on bascule vite
       });
     } catch (e) {
       console.warn(`IA indisponible (${e.message}), mode de secours.`);

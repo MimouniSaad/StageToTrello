@@ -150,7 +150,7 @@ Si la page ne contient pas d'offre (page générique, lien expiré, liste de ré
 Points notables :
 
 - **Garde-fou `FOUND`** : si le modèle estime que la page n'est pas une offre précise, rien n'est créé.
-- **Résilience Groq** : les modèles sont essayés tour à tour en cas d'erreur 429/5xx, jusqu'à 3 tours avec une pause (selon `retry-after`, 30 s max). Pour les modèles `gpt-oss`, `reasoning_effort` est réglé sur `low`.
+- **Résilience Groq** : les modèles sont essayés tour à tour en cas d'erreur 429/5xx, sur 2 tours avec une seule pause (selon `retry-after`, 10 s max) ; ensuite le mode de secours prend le relais, pour que le popup ne reste pas bloqué. Pour les modèles `gpt-oss`, `reasoning_effort` est réglé sur `low`.
 - **Authentification Trello** : clé et jeton dans l'en-tête `Authorization: OAuth oauth_consumer_key="…", oauth_token="…"`, jamais dans l'URL. Si Trello répond 401 (jeton révoqué), l'extension efface le jeton et réaffiche **Connecter Trello**.
 - **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau choisi. `KEYWORDS` (mode de secours) doit utiliser les mêmes noms.
 - **Connexion en arrière-plan** : Firefox ferme le popup quand la fenêtre d'autorisation prend le focus ; le flux tourne donc dans `background.js`.

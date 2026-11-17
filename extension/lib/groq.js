@@ -1,14 +1,15 @@
-// Client Groq : essaie chaque modèle tour à tour, jusqu'à 3 tours.
+// Client Groq : essaie chaque modèle tour à tour, sur plusieurs tours (3 par défaut).
 const Groq = (() => {
   const CoreRef = typeof Core !== "undefined" ? Core : require("./core.js");
   const URL_GROQ = "https://api.groq.com/openai/v1/chat/completions";
   const RETRY = new Set([429, 500, 502, 503, 504]);
   const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  async function callGroq(prompt, { apiKey, models, fetchFn = fetch, sleep = defaultSleep }) {
+  async function callGroq(prompt, { apiKey, models, fetchFn = fetch, sleep = defaultSleep,
+                                    rounds = 3, maxWaitS = 30 }) {
     let lastError = null;
     let wait = 5;
-    for (let round = 0; round < 3; round++) {
+    for (let round = 0; round < rounds; round++) {
       for (const model of models) {
         const body = { model, temperature: 0, max_tokens: 600,
                        messages: [{ role: "user", content: prompt }] };
@@ -27,7 +28,7 @@ const Groq = (() => {
         if (RETRY.has(r.status)) {
           lastError = await r.text();
           const ra = parseFloat(r.headers.get("retry-after") ?? "5");
-          if (!Number.isNaN(ra)) wait = Math.max(wait, Math.min(ra, 30));
+          if (!Number.isNaN(ra)) wait = Math.max(wait, Math.min(ra, maxWaitS));
           continue;
         }
         let out;
@@ -40,7 +41,7 @@ const Groq = (() => {
         out = out.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
         if (out) return out;
       }
-      await sleep(wait * 1000);
+      if (round < rounds - 1) await sleep(Math.min(wait, maxWaitS) * 1000);
     }
     throw new Error(`Erreur API Groq : ${lastError}`);
   }

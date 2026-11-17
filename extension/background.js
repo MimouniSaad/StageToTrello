@@ -4,6 +4,9 @@ async function connectTrello() {
   if (typeof CONFIG === "undefined" || !CONFIG.TRELLO_KEY) {
     return { ok: false, error: "config.js manquant : voir le README." };
   }
+  // Une page d'arrière-plan non persistante peut être suspendue après ~30 s d'inactivité :
+  // un appel d'API régulier la garde éveillée pendant que l'utilisateur se connecte.
+  const keepAlive = setInterval(() => browser.runtime.getPlatformInfo(), 20000);
   let redirect;
   try {
     redirect = await browser.identity.launchWebAuthFlow({
@@ -12,6 +15,8 @@ async function connectTrello() {
     });
   } catch (e) {
     return { ok: false, error: "Connexion Trello annulée." };
+  } finally {
+    clearInterval(keepAlive);
   }
   const token = Core.tokenFromRedirect(redirect);
   if (!token) return { ok: false, error: "Connexion Trello annulée." };

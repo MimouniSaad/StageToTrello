@@ -54,7 +54,7 @@ test("callGroq envoie les bons paramètres", async () => {
   assert.equal("reasoning_effort" in b.body, false);
 });
 
-test("callGroq abandonne après 3 tours en attendant au plus 30 s", async () => {
+test("callGroq abandonne après 3 tours sans attendre après le dernier", async () => {
   const f = fakeFetch(Array.from({ length: 6 }, () => reply(429, "rate", { "retry-after": "60" })));
   const sleeps = [];
   await assert.rejects(
@@ -62,7 +62,19 @@ test("callGroq abandonne après 3 tours en attendant au plus 30 s", async () => 
     /^Error: Erreur API Groq/,
   );
   assert.equal(f.calls.length, 6);
-  assert.deepEqual(sleeps, [30000, 30000, 30000]);
+  assert.deepEqual(sleeps, [30000, 30000]);
+});
+
+test("callGroq accepte moins de tours et une attente plus courte", async () => {
+  const f = fakeFetch(Array.from({ length: 4 }, () => reply(429, "rate", { "retry-after": "60" })));
+  const sleeps = [];
+  await assert.rejects(
+    Groq.callGroq("p", { apiKey: "K", models: ["a", "b"], fetchFn: f.fn,
+                         sleep: async (ms) => sleeps.push(ms), rounds: 2, maxWaitS: 10 }),
+    /^Error: Erreur API Groq/,
+  );
+  assert.equal(f.calls.length, 4);
+  assert.deepEqual(sleeps, [10000]);
 });
 
 test("callGroq ignore les erreurs réseau et les réponses vides", async () => {
