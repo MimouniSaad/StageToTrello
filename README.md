@@ -1,15 +1,15 @@
 # Stage → Trello
 
-Extension Firefox + petit serveur local qui transforment une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**.
+Extension Firefox qui transforme une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**. Rien à installer en dehors de Firefox : l'utilisateur clique sur **Connecter Trello**, autorise l'accès, et c'est prêt.
 
-Un clic sur le bouton (ou `Alt+Shift+S`) et une carte est créée dans ton tableau Trello avec :
+Chaque carte contient :
 
 - un **titre normalisé** : `Entreprise - Poste` (ex. `Capgemini - Ingénieur GRC`) ;
 - la **description de l'offre** (missions, profil, avantages…), reprise des données structurées de la page ou, à défaut, de son texte principal ;
 - le **lien de l'offre en pièce jointe** ;
-- des **étiquettes** (DevOps, Cloud, Cybersécurité…) choisies automatiquement.
+- des **étiquettes** (DevOps, Cloud, Cybersécurité…) choisies parmi celles du tableau.
 
-L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un modèle hébergé chez Groq (offre gratuite), ce qui fonctionne sur n'importe quel site sans règles à écrire site par site.
+L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un modèle hébergé chez Groq, ce qui fonctionne sur n'importe quel site sans règles à écrire site par site.
 
 ---
 
@@ -17,330 +17,184 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 
 1. [Comment ça marche](#comment-ça-marche)
 2. [Contenu du dépôt](#contenu-du-dépôt)
-3. [Prérequis](#prérequis)
-4. [Installation](#installation)
-5. [Utilisation](#utilisation)
-6. [Configuration](#configuration)
-7. [Détail du fonctionnement](#détail-du-fonctionnement)
-8. [Sécurité et confidentialité](#sécurité-et-confidentialité)
-9. [Limites connues](#limites-connues)
-10. [Dépannage](#dépannage)
-11. [Licence](#licence)
+3. [Mise en place (propriétaire de l'extension)](#mise-en-place-propriétaire-de-lextension)
+4. [Utilisation](#utilisation)
+5. [Détail du fonctionnement](#détail-du-fonctionnement)
+6. [Tests](#tests)
+7. [Sécurité et confidentialité](#sécurité-et-confidentialité)
+8. [Limites connues](#limites-connues)
+9. [Dépannage](#dépannage)
+10. [Licence](#licence)
 
 ---
 
 ## Comment ça marche
 
-Une extension Firefox ne peut pas lancer directement un script Python. Le projet est donc composé de deux parties qui communiquent en local :
-
 ```
- Firefox                         Ta machine (127.0.0.1:8765)                Services externes
-┌────────────────┐  GET /boards ┌──────────────────────────┐
-│  Extension     │  POST /add   │  server.py (HTTP local)  │
-│  (popup)       │ ───────────▶ │          │               │
-│                │ ◀─────────── │          ▼               │   ┌──────────────┐
-│ tableau, liste │  {ok, carte} │  add_stage.py            │──▶│ API Groq     │ extraction
-└────────────────┘              │   1. nettoyage de page   │   └──────────────┘
-                                │   2. extraction par LLM  │   ┌──────────────┐
-                                │   3. création de carte   │──▶│ API Trello   │ carte + labels
-                                └──────────────────────────┘   └──────────────┘
+ Firefox                                               Services externes
+┌──────────────────────────────────────┐
+│  Popup                               │   ┌──────────────┐
+│   1. lit la page de l'offre          │──▶│ API Groq     │ entreprise, poste, étiquettes
+│   2. extrait les informations        │   └──────────────┘
+│   3. crée la carte                   │   ┌──────────────┐
+│                                      │──▶│ API Trello   │ tableaux, carte, pièce jointe
+│  Arrière-plan : connexion Trello     │   └──────────────┘
+└──────────────────────────────────────┘
 ```
 
-1. Tu ouvres le popup de l'extension depuis la page de l'offre ; il charge tes tableaux et listes Trello via le serveur local.
-2. Tu choisis le tableau et la liste, puis tu cliques sur **Ajouter à Trello** (ou l'envoi est automatique si « Envoyer dès l'ouverture » est coché).
-3. L'extension envoie au serveur local **l'URL**, **le HTML de la page tel que ton navigateur l'affiche** (donc même les pages en JavaScript ou nécessitant une connexion), le tableau et la liste.
-4. Le serveur nettoie la page et demande à Groq l'entreprise, l'intitulé du poste et les étiquettes. La description vient des données structurées `JobPosting` (JSON-LD) de la page si elles existent, sinon du texte principal extrait.
-5. Il crée la carte, ajoute le lien en pièce jointe et renvoie le résultat, affiché dans le popup (`✓` ou `✗` avec le message d'erreur).
-
-`add_stage.py` peut aussi s'utiliser seul en ligne de commande, sans l'extension :
-
-```bash
-python add_stage.py "https://exemple.com/offre-de-stage"
-```
+1. Au premier usage, l'utilisateur clique sur **Connecter Trello**. La page d'autorisation officielle de Trello s'ouvre ; après accord, Trello renvoie un jeton personnel que l'extension garde dans son stockage local.
+2. Sur la page d'une offre, le popup affiche ses tableaux et listes Trello.
+3. Au clic sur **Ajouter à Trello**, l'extension lit la page telle qu'elle est affichée (données `JobPosting` JSON-LD, titre, nom du site, texte principal via Mozilla Readability).
+4. Elle demande à Groq l'entreprise, l'intitulé et les étiquettes, puis crée la carte et y joint le lien.
 
 ## Contenu du dépôt
 
 ```
 .
-├── add_stage.py              # Récupération de la page, extraction par Groq, création de la carte Trello
-├── server.py                 # Serveur HTTP local (127.0.0.1) appelé par l'extension
-├── requirements.txt          # Dépendances Python
-├── .env.example              # Modèle de configuration (à copier en .env)
-├── systemd/
-│   └── stage-server.service  # Service utilisateur pour démarrer le serveur automatiquement (Linux)
-└── extension/
-    ├── manifest.json         # Manifeste Firefox (Manifest V2)
-    ├── popup.html            # Popup : choix du tableau et de la liste, bouton d'envoi
-    ├── popup.js              # Logique du popup : charge les tableaux, envoie la page au serveur, affiche le résultat
-    ├── options.html          # Page de réglages (saisie du token)
-    ├── options.js            # Enregistrement du token dans le stockage local de l'extension
-    └── icon.svg              # Icône
+├── extension/
+│   ├── manifest.json         # Manifeste Firefox (Manifest V2)
+│   ├── config.example.js     # Modèle de configuration (à copier en config.js, jamais commité)
+│   ├── background.js         # Connexion Trello (flux d'autorisation officiel)
+│   ├── popup.html, popup.js  # Popup : connexion, choix du tableau et de la liste, envoi
+│   ├── icon.svg
+│   └── lib/
+│       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
+│       ├── groq.js           # Client Groq (modèles tour à tour, relances)
+│       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
+│       ├── page.js           # Script injecté dans l'onglet pour lire la page
+│       └── Readability.js    # Mozilla Readability 0.6.0 (Apache-2.0)
+├── tests/                    # Tests Node (node --test)
+├── package.json
+└── docs/superpowers/         # Design et plan d'implémentation
 ```
 
-## Prérequis
+## Mise en place (propriétaire de l'extension)
 
-- **Linux** (testé sur Ubuntu 24.04) ; le serveur Python est portable, seul le service `systemd` est spécifique à Linux.
-- **Python 3.10+** avec `venv`.
-- **Firefox** (l'extension utilise l'API `browser.*` / Manifest V2).
-- Un compte **Trello** et un tableau avec une liste destinée aux offres (par défaut `Stages`).
-- Une clé gratuite de l'**API Groq** : <https://console.groq.com/keys>.
-- Pour une installation permanente de l'extension : un compte gratuit sur <https://addons.mozilla.org/developers/> (signature « non listée »).
+Ces étapes ne sont à faire qu'une fois, par la personne qui publie l'extension. Les utilisateurs n'ont rien à configurer.
 
-## Installation
-
-### 1. Cloner et installer les dépendances
-
-```bash
-git clone https://github.com/<ton-compte>/stage-trello.git ~/stage-trello
-cd ~/stage-trello
-
-sudo apt install python3-full python3-venv zip
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Optionnel mais recommandé : navigateur headless pour les pages qui chargent leur contenu en JavaScript
-playwright install chromium
-```
-
-`requirements.txt` :
-
-```
-requests
-trafilatura
-beautifulsoup4
-playwright
-```
-
-### 2. Préparer Trello
+### 1. Créer l'application Trello
 
 1. Crée une application sur <https://trello.com/power-ups/admin> (choisis « **n'utilise pas les fonctionnalités Power-up** »).
-2. Dans la section **API Key**, génère une clé, puis clique sur le lien **Token** pour générer un jeton manuellement (autorise lecture et écriture).
-3. Récupère l'ID de ton tableau par défaut (optionnel : le popup permet aussi de le choisir) :
+2. Dans la section **API Key**, génère une clé. Cette clé est **publique** : elle identifie l'application, pas un utilisateur. Seul le jeton obtenu par chaque utilisateur est secret.
 
-   ```bash
-   AUTH="Authorization: OAuth oauth_consumer_key=\"$TRELLO_KEY\", oauth_token=\"$TRELLO_TOKEN\""
-   curl -H "$AUTH" "https://api.trello.com/1/members/me/boards?fields=name"
+### 2. Configurer l'extension
+
+```bash
+cp extension/config.example.js extension/config.js
+```
+
+Remplis `extension/config.js` :
+
+| Champ | Description |
+|---|---|
+| `TRELLO_KEY` | Clé de l'application Trello (étape 1) |
+| `GROQ_API_KEY` | Clé Groq (<https://console.groq.com/keys>) ; vide = mode de secours par mots-clés, moins fiable |
+| `GROQ_MODELS` | Modèles essayés dans l'ordre, du préféré au dernier recours |
+| `DEFAULT_LIST` | Nom de la liste présélectionnée au premier usage (défaut : `Stages`) |
+
+`config.js` est dans `.gitignore` : **ne le commite jamais**.
+
+### 3. Autoriser l'URL de redirection dans Trello
+
+Trello ne renvoie le jeton qu'aux adresses autorisées.
+
+1. Charge l'extension (voir l'étape 4), ouvre `about:debugging#/runtime/this-firefox`, clique sur **Examiner** à côté de « Stage vers Trello » et tape dans la console :
+
+   ```js
+   browser.identity.getRedirectURL()
    ```
 
-4. Vérifie les noms de tes listes et étiquettes :
+2. Copie l'adresse obtenue (de la forme `https://….extensions.allizom.org/`) et ajoute-la dans **Allowed origins** de l'application Trello (<https://trello.com/power-ups/admin>).
 
-   ```bash
-   curl -H "$AUTH" "https://api.trello.com/1/boards/<ID_TABLEAU>/lists?fields=name"
-   curl -H "$AUTH" "https://api.trello.com/1/boards/<ID_TABLEAU>/labels?fields=name"
-   ```
+Cette adresse dépend de l'identifiant de l'extension (`browser_specific_settings.gecko.id` dans `manifest.json`) : si tu le changes, recommence cette étape.
 
-5. Les étiquettes proposées au modèle sont lues directement sur le tableau : rien à configurer. Dans `add_stage.py`, adapte seulement `KEYWORDS`, utilisé en mode de secours (sans clé Groq) ; ses noms doivent correspondre à tes étiquettes.
+### 4. Installer l'extension
 
-### 3. Configurer l'environnement
-
-```bash
-cp .env.example .env
-```
-
-Génère un token pour sécuriser le serveur local :
-
-```bash
-openssl rand -hex 16
-```
-
-Puis remplis `.env` (**sans** `export` et sans guillemets, pour rester compatible avec `systemd`) :
-
-```bash
-TRELLO_KEY=...
-TRELLO_TOKEN=...
-TRELLO_BOARD=<ID du tableau par défaut>
-TRELLO_LIST=Stages
-GROQ_API_KEY=...
-GROQ_MODELS=openai/gpt-oss-120b,openai/gpt-oss-20b
-STAGE_TOKEN=<le token généré>
-```
-
-### 4. Tester en ligne de commande
-
-```bash
-set -a; source .env; set +a
-python add_stage.py "https://lien-direct-d-une-offre"
-```
-
-Tu dois voir `Carte créée : https://trello.com/c/...`.
-
-### 5. Lancer le serveur local
-
-À la main (arrêt avec `Ctrl+C`, jamais `Ctrl+Z`) :
-
-```bash
-set -a; source .env; set +a
-python server.py
-```
-
-Ou automatiquement avec `systemd` (le fichier suppose que le dépôt est dans `~/stage-trello` ; sinon, adapte les chemins dans `systemd/stage-server.service`) :
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/stage-server.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now stage-server
-systemctl --user status stage-server     # doit afficher "active (running)"
-
-# Démarrer dès le boot, avant même la connexion à la session
-sudo loginctl enable-linger $USER
-```
-
-Test du serveur (la réponse doit être `token invalide`, ce qui prouve que le serveur répond et qu'il est protégé) :
-
-```bash
-curl -s --max-time 5 -X POST http://127.0.0.1:8765/add -H "X-Token: mauvais" -d '{}'
-```
-
-### 6. Installer l'extension Firefox
-
-**Pour tester (temporaire, disparaît au redémarrage de Firefox)**
-
-1. Ouvre `about:debugging#/runtime/this-firefox`.
-2. Clique sur **Charger un module complémentaire temporaire…** et choisis `extension/manifest.json`.
+**Pour tester (temporaire, disparaît au redémarrage de Firefox)** : `about:debugging#/runtime/this-firefox` → **Charger un module complémentaire temporaire…** → `extension/manifest.json`.
 
 **Pour une installation permanente** : Firefox n'accepte que les extensions signées par Mozilla. La signature « non listée » est gratuite et l'extension reste privée.
 
-1. Change l'identifiant dans `extension/manifest.json` (`browser_specific_settings.gecko.id`) pour qu'il soit unique, par exemple `stage-trello-<ton-pseudo>@exemple.org`.
-2. Crée le paquet :
+1. Si besoin, change l'identifiant dans `extension/manifest.json` pour qu'il soit unique (puis refais l'étape 3).
+2. Crée le paquet (il contient `config.js`) :
 
    ```bash
    cd extension && zip -r ../stage-trello.zip . && cd ..
    ```
 
 3. Envoie `stage-trello.zip` sur <https://addons.mozilla.org/developers/> (**Submit a New Add-on** → **On your own**). À la question sur le code source, réponds **No** (aucune minification ni outil de build).
-4. Télécharge le `.xpi` signé et installe-le : `about:addons` → ⚙ → **Installer un module depuis un fichier…**.
-
-Alternative en ligne de commande :
-
-```bash
-cd extension
-npx web-ext sign --channel=unlisted --api-key="<USER_ID>" --api-secret="<SECRET>"
-```
-
-Après l'installation, ouvre les **préférences** de l'extension (`about:addons` → Stage vers Trello → Préférences) et colle la valeur de `STAGE_TOKEN`. Épingle ensuite le bouton dans la barre d'outils.
+4. Télécharge le `.xpi` signé et distribue-le. Installation : `about:addons` → ⚙ → **Installer un module depuis un fichier…**.
 
 Pour publier une mise à jour, incrémente `"version"` dans `manifest.json` : Mozilla refuse de signer deux fois la même version.
 
 ## Utilisation
 
-1. Ouvre la **page de l'offre elle-même** (pas une liste de résultats).
-2. Clique sur le bouton de l'extension, ou fais `Alt+Shift+S`, pour ouvrir le popup.
-3. Choisis le tableau et la liste (le choix est mémorisé), puis clique sur **Ajouter à Trello**. Coche « Envoyer dès l'ouverture » pour que les prochaines ouvertures du popup envoient directement l'offre.
-4. Le popup affiche « Création de la carte… », puis :
-   - `✓ Entreprise - Poste` ;
-   - ou `✗` avec le message d'erreur.
-5. La carte apparaît dans la liste Trello choisie.
+1. Installe l'extension et épingle son bouton dans la barre d'outils.
+2. Ouvre le popup et clique sur **Connecter Trello**, puis autorise l'accès dans la fenêtre Trello. Le popup peut se fermer pendant l'autorisation : rouvre-le ensuite.
+3. Ouvre la **page de l'offre elle-même** (pas une liste de résultats), puis le popup (bouton ou `Alt+Shift+S`).
+4. Choisis le tableau et la liste (le choix est mémorisé), puis clique sur **Ajouter à Trello**. Coche « Envoyer dès l'ouverture » pour que les prochaines ouvertures du popup envoient directement l'offre.
+5. Le popup affiche `✓ Entreprise - Poste`, ou `✗` avec le message d'erreur.
 
-Si la page ne contient pas d'offre (page générique, lien expiré, liste de résultats), **aucune carte n'est créée**.
-
-## Configuration
-
-Variables d'environnement lues par `add_stage.py` et `server.py` :
-
-| Variable | Obligatoire | Description |
-|---|---|---|
-| `TRELLO_KEY` | oui | Clé d'API Trello |
-| `TRELLO_TOKEN` | oui | Jeton Trello (lecture et écriture) |
-| `TRELLO_BOARD` | pour la ligne de commande | ID du tableau par défaut (présélectionné dans le popup, obligatoire pour `add_stage.py` seul) |
-| `TRELLO_LIST` | non | Nom exact de la liste par défaut (défaut : `Stages`) |
-| `GROQ_API_KEY` | recommandé | Clé API Groq ; sans elle, le script bascule sur un mode de secours par mots-clés, nettement moins fiable |
-| `GROQ_MODELS` | non | Modèles à essayer, séparés par des virgules, du préféré au dernier recours |
-| `STAGE_TOKEN` | pour le serveur | Secret partagé entre l'extension et le serveur local |
-
-Autres réglages dans le code :
-
-- `KEYWORDS` et `MAX_PROMPT_CHARS` dans `add_stage.py` ;
-- `PORT` dans `server.py` (si tu le changes, mets aussi à jour `manifest.json` et `popup.js`).
-
-Les quotas et la liste des modèles de l'offre gratuite changent régulièrement : consulte la console Groq, et liste les modèles accessibles avec :
-
-```bash
-curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY" | grep '"id"'
-```
+Si la page ne contient pas d'offre (page générique, lien expiré, liste de résultats), **aucune carte n'est créée**. Le lien **Déconnecter** efface le jeton Trello de l'extension.
 
 ## Détail du fonctionnement
 
-### `add_stage.py`
-
-| Étape | Fonction | Rôle |
+| Étape | Fichier | Rôle |
 |---|---|---|
-| Récupération | `fetch` | Télécharge la page avec `requests`, ou la rend avec Playwright (Chromium headless) si `render=True` |
-| Nettoyage | `page_text`, `page_meta`, `jobposting` | `trafilatura` extrait le contenu principal en markdown ; `BeautifulSoup` lit le titre, `og:site_name` et les données `JobPosting` (JSON-LD) |
-| Extraction | `llm_extract`, `call_groq` | Envoie le début du texte à Groq et récupère 4 lignes : `FOUND`, `COMPANY`, `TITLE`, `LABELS` |
-| Secours | `heuristic_extract` | Sans clé Groq (ou si Groq échoue) : entreprise et titre depuis le JSON-LD ou les métadonnées, étiquettes par mots-clés |
-| Description | `build_info` | Description du JSON-LD si elle dépasse 300 caractères, sinon texte extrait par `trafilatura` |
-| Trello | `trello`, `find_list`, `create_card` | Appels authentifiés par en-tête, erreurs Trello remontées telles quelles ; crée la carte et ajoute l'URL en pièce jointe |
-| Orchestration | `main` | Essaie dans l'ordre : HTML fourni par l'extension → téléchargement simple → rendu Playwright, et s'arrête dès qu'une offre est détectée |
+| Connexion | `background.js` | `browser.identity.launchWebAuthFlow` vers `https://trello.com/1/authorize` (`scope=read,write`, `expiration=never`, `callback_method=fragment`) ; jeton lu dans le fragment de l'URL de retour et stocké dans `storage.local` |
+| Lecture | `lib/page.js` | Injecté dans l'onglet : JSON-LD, `og:title`, `og:site_name`, `<title>`, texte principal via Readability (repli sur le texte visible) |
+| Extraction | `lib/groq.js`, `lib/core.js` | Envoie les 10 000 premiers caractères à Groq et lit 4 lignes : `FOUND`, `COMPANY`, `TITLE`, `LABELS` |
+| Secours | `lib/core.js` | Sans clé Groq ou si Groq échoue : entreprise et titre depuis le JSON-LD ou les métadonnées, étiquettes par mots-clés (`KEYWORDS`) |
+| Description | `lib/core.js` | Description JSON-LD si elle dépasse 300 caractères, sinon texte de la page ; tronquée à 16 000 caractères (limite Trello : 16 384) |
+| Trello | `lib/trello.js` | Tableaux, étiquettes, création de la carte et pièce jointe |
 
 Points notables :
 
-- **Format de réponse du LLM** : 4 lignes en clair (`FOUND`, `COMPANY`, `TITLE`, `LABELS`), plus simple et plus robuste que du JSON. Le modèle ne recopie pas la description, ce qui limite la consommation de tokens et évite les erreurs de recopie.
 - **Garde-fou `FOUND`** : si le modèle estime que la page n'est pas une offre précise, rien n'est créé.
-- **Résilience Groq** : les modèles sont essayés **tour à tour sans attendre** en cas d'erreur 429/5xx, jusqu'à 3 tours avec une pause (selon `retry-after`, 30 s max). Pour les modèles `gpt-oss`, `reasoning_effort` est réglé sur `low` pour accélérer la réponse.
-- **Taille du prompt** : le texte envoyé est limité à `MAX_PROMPT_CHARS` (10 000 caractères) pour rester sous la limite de tokens par minute de l'offre gratuite.
-- **Authentification Trello** : la clé et le jeton passent dans l'en-tête `Authorization`, jamais dans l'URL, pour ne pas apparaître dans les messages d'erreur.
-- **Limites Trello** : la description est tronquée à 16 000 caractères (la limite est de 16 384).
-- **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau.
+- **Résilience Groq** : les modèles sont essayés tour à tour en cas d'erreur 429/5xx, jusqu'à 3 tours avec une pause (selon `retry-after`, 30 s max). Pour les modèles `gpt-oss`, `reasoning_effort` est réglé sur `low`.
+- **Authentification Trello** : clé et jeton dans l'en-tête `Authorization: OAuth oauth_consumer_key="…", oauth_token="…"`, jamais dans l'URL. Si Trello répond 401 (jeton révoqué), l'extension efface le jeton et réaffiche **Connecter Trello**.
+- **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau choisi. `KEYWORDS` (mode de secours) doit utiliser les mêmes noms.
+- **Connexion en arrière-plan** : Firefox ferme le popup quand la fenêtre d'autorisation prend le focus ; le flux tourne donc dans `background.js`.
 
-### `server.py`
+## Tests
 
-- Serveur HTTP (`ThreadingHTTPServer`) écoutant **uniquement sur `127.0.0.1:8765`**.
-- `GET /boards` : renvoie les tableaux ouverts et leurs listes, ainsi que `defaultBoard` (`TRELLO_BOARD`) et `defaultList` (`TRELLO_LIST`).
-- `POST /add` avec le corps JSON `{"url": "...", "html": "...", "board": "...", "list": "..."}` (`html`, `board` et `list` sont optionnels ; à défaut, `TRELLO_BOARD` et `TRELLO_LIST` sont utilisés).
-- Les deux exigent l'en-tête `X-Token` égal à `STAGE_TOKEN`, sinon `403`.
-- Vérifie que l'URL commence par `http://` ou `https://`.
-- Un **verrou** garantit une seule création de carte à la fois.
-- Répond `{"ok": true, "name": "...", "card": "<url>"}` ou `{"ok": false, "error": "..."}`.
-- Gère le préflight CORS (`OPTIONS`).
+La logique (prompt, lecture des réponses, JSON-LD, mode de secours, clients Groq et Trello) est testée sous Node, sans dépendance :
 
-### Extension Firefox
+```bash
+npm test
+```
 
-- **Permissions** : `activeTab` (lire la page active au clic), `storage` (mémoriser le token, le tableau, la liste et l'option d'envoi automatique) et l'accès à `http://127.0.0.1:8765/*` uniquement.
-- **Données transmises** : le manifeste déclare `data_collection_permissions` `websiteContent`, car le contenu de la page est envoyé, via le serveur local, à Groq et à Trello.
-- **`popup.js`** : à l'ouverture, charge les tableaux via `GET /boards` et restaure le dernier choix. À l'envoi, récupère `document.documentElement.outerHTML` de l'onglet actif, envoie `{url, html, board, list}` au serveur et affiche le résultat. Sur une page protégée (ex. `about:` ou la boutique d'extensions), la lecture du HTML échoue silencieusement et c'est le serveur qui télécharge l'URL.
-- **Page de réglages** (`options.html`, `options.js`) : saisie du token, stocké localement dans le profil Firefox. **Aucun secret n'est présent dans le code de l'extension.**
-- **Raccourci** : `Alt+Shift+S` (modifiable dans `about:addons` → ⚙ → **Gérer les raccourcis des extensions**).
+Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de la mise en place).
 
 ## Sécurité et confidentialité
 
-- Le serveur n'écoute que sur **localhost** et exige un **token secret** : une page web quelconque ne peut pas déclencher la création de cartes.
-- **Ne publie jamais `.env`** : ajoute-le à `.gitignore` avec `venv/` et `*.xpi`. Les clés Trello, Groq et le `STAGE_TOKEN` ne doivent apparaître nulle part dans le dépôt.
-- Le jeton Trello donne accès à ton compte : si un secret a été exposé, régénère-le.
-- **Données envoyées à des services tiers** : le début du texte de la page est transmis à l'API Groq, et la description à Trello. Consulte les conditions d'utilisation de Groq et ne l'utilise que sur des contenus publics (offres d'emploi), pas sur des pages privées ou sensibles.
-- L'extension envoie le **HTML complet de la page active**, y compris ce qui s'affiche quand tu es connecté. N'appuie sur le bouton que sur des offres.
+- **Clé Groq** : elle est incluse dans le paquet de l'extension, donc lisible par toute personne qui l'ouvre, et le quota gratuit est partagé entre tous les utilisateurs. C'est acceptable pour une diffusion restreinte ; en cas d'abus, régénère-la sur la console Groq. Elle ne doit **jamais** apparaître dans le dépôt Git.
+- **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
+- **Données transmises** : au clic, le début du texte de la page est envoyé à Groq et la description à Trello. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
+- **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), et l'accès à `api.trello.com` et `api.groq.com` uniquement.
 
 ## Limites connues
 
-- Il faut l'**URL directe de l'offre**. Sur une page de liste ou une page générique, le script répond « Aucune offre trouvée ».
-- Certains sites ne servent le contenu qu'après connexion ou action de l'utilisateur : le fait d'envoyer le HTML déjà affiché contourne la plupart de ces cas, mais pas tous.
-- Sans données `JobPosting`, la description est le texte extrait par `trafilatura` : il peut contenir des éléments parasites ; relis la carte en cas de doute.
-- Le modèle ne voit que les `MAX_PROMPT_CHARS` premiers caractères de la page.
-- Les quotas gratuits de Groq sont limités et peuvent changer ; en cas de surcharge, le script bascule sur le modèle suivant de `GROQ_MODELS`.
-- Les étiquettes sont celles de **ton** tableau ; `KEYWORDS` (mode de secours) doit utiliser les mêmes noms.
+- Il faut l'**URL directe de l'offre**. Sur une page de liste ou une page générique, l'extension répond « Aucune offre trouvée sur cette page. ».
+- Les pages protégées de Firefox (`about:`, boutique d'extensions) ne peuvent pas être lues.
+- Sans données `JobPosting`, la description est le texte extrait par Readability : il peut contenir des éléments parasites ; relis la carte en cas de doute.
+- Le modèle ne voit que les 10 000 premiers caractères de la page.
+- Les quotas gratuits de Groq sont limités et peuvent changer ; en cas de surcharge, l'extension passe au modèle suivant, puis au mode de secours.
 - Testé sous Linux et Firefox ; non testé sous macOS/Windows ni sous Chrome.
 
 ## Dépannage
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
-| « Token manquant » dans le popup | Token pas encore saisi | Préférences de l'extension → coller `STAGE_TOKEN` |
-| `✗` « token invalide » (log `403`) | Token de l'extension ≠ `STAGE_TOKEN` | Recopier la valeur exacte du `.env`, sans espace ni guillemets |
-| `✗` « NetworkError » | Serveur arrêté | `systemctl --user status stage-server` puis `restart` |
-| `Address already in use` | Un ancien `server.py` occupe le port, éventuellement suspendu par `Ctrl+Z` | `ss -ltnp \| grep 8765` puis `kill -9 <PID>`, enfin `systemctl --user reset-failed stage-server && systemctl --user restart stage-server` |
-| `curl` vers le serveur qui ne répond jamais | Processus suspendu (état `T`) | Même solution : `kill -9` |
-| Service `systemd` en échec immédiat | Variable manquante dans `.env` ou mot `export` en début de ligne | `journalctl --user -u stage-server -n 30 --no-pager` |
-| `503` / « indisponible » de Groq | Modèle surchargé | Normal : le script passe au modèle suivant. Ajuste `GROQ_MODELS` |
-| `✗ Erreur Trello 401` | Clé ou jeton Trello invalide | Régénère le jeton et mets à jour `.env` |
-| `✗ Liste « … » introuvable` | `TRELLO_LIST` absent du tableau | Corrige `TRELLO_LIST` ou choisis la liste dans le popup |
-| `429` sur tous les modèles | Quota gratuit épuisé | Attends la réinitialisation quotidienne ou ajoute d'autres modèles |
-| « Aucune offre trouvée » | Page générique, liste, lien expiré | Ouvre l'offre elle-même |
-| Carte sans étiquettes | Étiquettes sans nom sur le tableau, ou mode de secours avec `KEYWORDS` mal nommés | Nomme tes étiquettes Trello ; aligne `KEYWORDS` sur ces noms |
-| « Playwright non installé » | Navigateur headless absent | `pip install playwright && playwright install chromium` (sur Ubuntu, au besoin : `sudo $(which playwright) install-deps chromium`) |
+| `✗ config.js manquant` | `extension/config.js` absent ou `TRELLO_KEY` vide | Copier `config.example.js` en `config.js` et le remplir |
+| « Connexion Trello annulée. » sans avoir annulé | URL de redirection absente des « Allowed origins » de l'app Trello | Refaire l'étape 3 de la mise en place |
+| « Session Trello expirée, reconnecte-toi. » | Jeton révoqué ou invalide (401) | Cliquer sur **Connecter Trello** |
+| `✗ Erreur Trello 4xx : …` | Trello refuse la requête (liste supprimée, droits insuffisants) | Lire le message ; rechoisir le tableau et la liste |
+| « Impossible de lire cette page. » | Page protégée de Firefox | Ouvrir l'offre dans un onglet normal |
+| « Aucune offre trouvée sur cette page. » | Page générique, liste, lien expiré | Ouvrir l'offre elle-même |
+| Étiquettes absentes ou peu pertinentes | Groq indisponible (mode de secours) ou étiquettes sans nom | Vérifier la clé Groq ; nommer les étiquettes Trello ; aligner `KEYWORDS` |
 
-Logs en direct : `journalctl --user -u stage-server -f`.
+Pour voir les messages techniques (par exemple « IA indisponible ») : `about:debugging#/runtime/this-firefox` → **Examiner** sur l'extension.
 
 ## Licence
 
-À choisir avant la publication, par exemple [MIT](https://choosealicense.com/licenses/mit/). Ajoute un fichier `LICENSE` à la racine du dépôt.
+[MIT](LICENSE).
