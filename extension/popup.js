@@ -1,4 +1,3 @@
-cat > popup.js <<'EOF'
 const SERVER = "http://127.0.0.1:8765";
 const $ = (id) => document.getElementById(id);
 let boards = [];
@@ -96,4 +95,3 @@ $("board").addEventListener("change", () => fillLists($("board").value));
 $("auto").addEventListener("change", () => browser.storage.local.set({ auto: $("auto").checked }));
 $("add").addEventListener("click", add);
 init();
-EOF
