@@ -10,18 +10,31 @@
     select, button { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
     button { margin-top: 12px; cursor: pointer; }
     #status { margin-top: 10px; min-height: 1.2em; word-break: break-word; }
+    #logout { display: block; margin-top: 10px; text-align: right; font-size: 12px; }
     .ok { color: #2e7d32; }
     .err { color: #c62828; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <label for="board">Tableau</label>
-  <select id="board"></select>
-  <label for="list">Liste</label>
-  <select id="list"></select>
-  <label class="auto"><input type="checkbox" id="auto"> Envoyer dès l'ouverture</label>
-  <button id="add">Ajouter à Trello</button>
+  <section id="login" hidden>
+    <p>Connecte ton compte Trello pour envoyer les offres sur tes tableaux.</p>
+    <button id="connect">Connecter Trello</button>
+  </section>
+  <section id="main" hidden>
+    <label for="board">Tableau</label>
+    <select id="board"></select>
+    <label for="list">Liste</label>
+    <select id="list"></select>
+    <label class="auto"><input type="checkbox" id="auto"> Envoyer dès l'ouverture</label>
+    <button id="add">Ajouter à Trello</button>
+    <a href="#" id="logout">Déconnecter</a>
+  </section>
   <div id="status"></div>
+  <script src="config.js"></script>
+  <script src="lib/core.js"></script>
+  <script src="lib/groq.js"></script>
+  <script src="lib/trello.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

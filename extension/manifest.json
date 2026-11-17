@@ -21,6 +21,14 @@
     "https://api.trello.com/*",
     "https://api.groq.com/*"
   ],
+  "background": {
+    "scripts": [
+      "config.js",
+      "lib/core.js",
+      "background.js"
+    ],
+    "persistent": false
+  },
   "icons": {
     "48": "icon.svg"
   },
