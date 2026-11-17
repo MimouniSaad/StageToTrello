@@ -1,4 +1,0 @@
-requests
-trafilatura
-beautifulsoup4
-playwright

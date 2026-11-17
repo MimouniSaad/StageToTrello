@@ -1,24 +1,39 @@
 {
   "manifest_version": 2,
   "name": "Stage vers Trello",
-  "version": "1.3",
+  "version": "2.0",
   "description": "Envoie l'offre ouverte vers ton tableau Trello en un clic",
   "browser_specific_settings": {
     "gecko": {
       "id": "stage-trello-saad@local",
       "strict_min_version": "140.0",
-      "data_collection_permissions": { "required": ["websiteContent"] }
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent"
+        ]
+      }
     }
   },
-  "permissions": ["activeTab", "storage", "http://127.0.0.1:8765/*"],
-  "icons": { "48": "icon.svg" },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "identity",
+    "https://api.trello.com/*",
+    "https://api.groq.com/*"
+  ],
+  "icons": {
+    "48": "icon.svg"
+  },
   "browser_action": {
     "default_title": "Ajouter à Trello",
     "default_icon": "icon.svg",
     "default_popup": "popup.html"
   },
-  "options_ui": { "page": "options.html", "open_in_tab": true },
   "commands": {
-    "_execute_browser_action": { "suggested_key": { "default": "Alt+Shift+S" } }
+    "_execute_browser_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      }
+    }
   }
 }
