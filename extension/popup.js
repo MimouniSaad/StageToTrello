@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const PRIVACY_URL = "https://github.com/MimouniSaad/StageToTrello/blob/main/PRIVACY.md";
 let boards = [];
 let trello = null;
 let quotaTimer = null;
@@ -172,6 +173,13 @@ async function init() {
 
 $("connect").addEventListener("click", connect);
 $("logout").addEventListener("click", (e) => { e.preventDefault(); logout(); });
+for (const link of document.querySelectorAll(".privacy")) {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    browser.tabs.create({ url: PRIVACY_URL });
+    window.close();
+  });
+}
 $("board").addEventListener("change", () => fillLists($("board").value));
 $("auto").addEventListener("change", () => browser.storage.local.set({ auto: $("auto").checked }));
 $("add").addEventListener("click", add);
