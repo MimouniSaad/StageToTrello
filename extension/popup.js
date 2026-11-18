@@ -16,28 +16,31 @@ async function renderQuota() {
   const st = await quotaStatus();
   const el = $("quota");
   clearTimeout(quotaTimer);
+  $("quota-bar").style.width = `${Math.min(100, (st.used / st.limit) * 100)}%`;
   if (st.blocked) {
-    el.className = "err";
-    el.textContent = Quota.blockedMessage(st, Date.now());
+    el.className = "quota err";
+    $("quota-text").textContent = Quota.blockedMessage(st, Date.now());
     $("add").disabled = true;
     quotaTimer = setTimeout(renderQuota, Math.min(20000, Math.max(1000, st.resetAt - Date.now())));
   } else {
-    el.className = "";
-    el.textContent = `${st.remaining} offre${st.remaining > 1 ? "s" : ""} restante${st.remaining > 1 ? "s" : ""} aujourd'hui sur ${st.limit}.`;
+    el.className = "quota";
+    $("quota-text").textContent = `${st.remaining} offre${st.remaining > 1 ? "s" : ""} restante${st.remaining > 1 ? "s" : ""} aujourd'hui sur ${st.limit}`;
     $("add").disabled = busy;
   }
   return st;
 }
 
+// Bandeau d'état : l'icône (✓, !, ⏳) vient du style selon la classe ok / err / (info).
 function setStatus(text, cls = "") {
   const el = $("status");
   el.className = cls;
-  el.textContent = text;
+  el.textContent = text.replace(/^[✓✗]\s*/, "");
 }
 
 function show(screen) {
   $("login").hidden = screen !== "login";
   $("main").hidden = screen !== "main";
+  $("logout").hidden = screen !== "main";
 }
 
 function configError() {
