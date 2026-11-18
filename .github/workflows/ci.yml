@@ -20,7 +20,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # Tests + couverture ; échoue sous les seuils (lignes 95 %, branches 85 %, fonctions 95 %)
+      - name: Tests et couverture
+        shell: bash
+        run: npm run coverage --silent | tee coverage.txt
+      - name: Résumé de la couverture
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Couverture de tests"
+            echo '```'
+            sed -n '/start of coverage report/,/end of coverage report/p' coverage.txt | sed 's/^# //'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   lint:
     name: Lint de l'extension

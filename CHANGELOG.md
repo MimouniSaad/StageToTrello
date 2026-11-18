@@ -10,6 +10,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 - CI GitHub Actions sur chaque PR et chaque push vers `develop` et `main` : tests, lint de l'extension, paquet AMO, construction du relais (#53).
 - Protection des branches `main` et `develop` par un ruleset ; `main` n'accepte que des PR venant de `develop` (#54).
 - Numérotation SemVer, ce journal des modifications et vérification de la cohérence des versions en CI (#57).
+- Couverture de tests mesurée en CI avec seuils minimaux (lignes 95 %, branches 85 %, fonctions 95 %) et résumé dans l'exécution ; nouveaux tests des cas d'erreur du relais (#56).
 
 ### Modifié
 - Nouveau design du popup, plus apaisant : palette douce, mode sombre dédié, compteur avec barre de progression, bandeau d'état avec icône, focus visible au clavier (#61).
