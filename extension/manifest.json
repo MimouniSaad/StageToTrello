@@ -1,0 +1,55 @@
+{
+  "manifest_version": 2,
+  "name": "StageToTrello",
+  "version": "3.0",
+  "description": "Ajoute l’offre de stage ou d’emploi ouverte à ton tableau Trello en un clic : titre « Entreprise - Poste », description complète, lien et étiquettes choisies automatiquement.",
+  "homepage_url": "https://github.com/MimouniSaad/StageToTrello",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "stage-trello@mimounisaad",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "identity",
+    "notifications",
+    "https://api.trello.com/*",
+    "https://stage-trello-relay.mimsaad03.workers.dev/*"
+  ],
+  "background": {
+    "scripts": [
+      "config.js",
+      "lib/core.js",
+      "lib/trello.js",
+      "lib/relay.js",
+      "lib/quota.js",
+      "lib/add.js",
+      "background.js"
+    ],
+    "persistent": false
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "browser_action": {
+    "default_title": "Ajouter à Trello",
+    "default_icon": "icons/icon.svg",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "_execute_browser_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      }
+    }
+  }
+}

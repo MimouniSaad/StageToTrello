@@ -1,0 +1,21 @@
+# Relais StageToTrello — https://stage-trello-relay.mimsaad03.workers.dev
+name = "stage-trello-relay"
+main = "src/worker.js"
+compatibility_date = "2025-11-01"
+workers_dev = true
+
+[vars]
+# Ordre des modèles essayés (le suivant sert de secours en cas de 429 ou 5xx)
+GROQ_MODELS = "openai/gpt-oss-120b,openai/gpt-oss-20b"
+# Analyses réussies autorisées par compte Trello et par jour (remise à zéro à minuit UTC)
+DAILY_LIMIT = "40"
+
+# Compteurs par compte Trello et cache des jetons vérifiés.
+# Crée-le avec : npx wrangler kv namespace create USAGE   puis colle l'id ci-dessous.
+[[kv_namespaces]]
+binding = "USAGE"
+id = "8ce16fbf28e64ce1b4b7bac7659da279"
+
+# Secrets (jamais dans ce fichier) :
+#   npx wrangler secret put GROQ_API_KEY
+#   npx wrangler secret put TRELLO_KEY

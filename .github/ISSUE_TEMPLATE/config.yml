@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support StageToTrello
+    url: https://github.com/MimouniSaad/StageToTrello/issues
+    about: Consulte les tickets existants avant d'en ouvrir un nouveau.
