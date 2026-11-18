@@ -180,3 +180,54 @@ test("les erreurs ne contiennent ni la clé Groq ni le jeton", async () => {
   assert.ok(!text.includes("gsk_secret_value"));
   assert.ok(!text.includes(TOKEN));
 });
+
+// ---------- Cas d'erreur (couverture) ----------
+
+test("Trello injoignable (erreur réseau) : 502", async () => {
+  mockFetch({ trello: () => { throw new TypeError("NetworkError"); } });
+  const r = await worker.fetch(req("/extract"), makeEnv());
+  assert.equal(r.status, 502);
+  assert.equal((await r.json()).code, "trello_unreachable");
+});
+
+test("Groq : erreur réseau, réponse 4xx ou JSON inutilisable → modèle suivant", async () => {
+  const cases = [
+    () => { throw new TypeError("NetworkError"); },
+    () => new Response("bad request", { status: 400 }),
+    () => new Response("pas du json", { status: 200 }),
+    () => new Response(JSON.stringify({ choices: [{ message: { content: "<think>…</think>" } }] }), { status: 200 }),
+  ];
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    for (const first of cases) {
+      mockFetch({ groq: (b) => (b.model === "openai/gpt-oss-120b" ? first() : groqOk()) });
+      const data = await (await worker.fetch(req("/extract"), makeEnv())).json();
+      assert.equal(data.ok, true);
+      assert.equal(data.model, "openai/gpt-oss-20b");
+    }
+  } finally {
+    console.warn = warn;
+  }
+});
+
+test("erreur inattendue : 500 générique, sans détail", async () => {
+  mockFetch();
+  const env = makeEnv();
+  const get = env.USAGE.get;
+  env.USAGE.get = async (k) => {   // le compteur du jour devient illisible
+    if (k.startsWith("use:")) throw new Error("KV indisponible : détail interne");
+    return get(k);
+  };
+  const errorLog = console.error;
+  console.error = () => {};
+  try {
+    const r = await worker.fetch(req("/extract"), env);
+    assert.equal(r.status, 500);
+    const text = await r.text();
+    assert.match(text, /"code":"internal"/);
+    assert.ok(!text.includes("détail interne"));
+  } finally {
+    console.error = errorLog;
+  }
+});

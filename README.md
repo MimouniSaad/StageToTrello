@@ -209,7 +209,15 @@ La logique (prompt, lecture des réponses, JSON-LD, mode de secours, limite quot
 npm test
 ```
 
-Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de la mise en place).
+**Couverture** (lancée par la CI dans le job « Tests », avec un résumé dans l'onglet *Summary* de l'exécution) :
+
+```bash
+npm run coverage
+```
+
+Elle mesure `extension/lib/` (hors `Readability.js`, code tiers) et `relay/src/`, et échoue sous les seuils : **95 % des lignes, 85 % des branches, 95 % des fonctions**. Valeurs au moment de la mise en place : 100 % des lignes, 90,6 % des branches, 100 % des fonctions.
+
+Le popup (`popup.js`), le script d'arrière-plan (`background.js`, testé en partie dans un contexte isolé) et le script injecté (`page.js`) dépendent du navigateur et ne sont pas comptés ; ils se testent à la main dans Firefox (étape 4 de la mise en place).
 
 ## Sécurité et confidentialité
 
