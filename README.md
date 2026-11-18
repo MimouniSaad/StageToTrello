@@ -56,7 +56,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 │   ├── config.example.js     # Modèle de configuration (à copier en config.js, jamais commité)
 │   ├── background.js         # Connexion Trello (flux d'autorisation officiel)
 │   ├── popup.html, popup.js  # Popup : connexion, choix du tableau et de la liste, envoi
-│   ├── icon.svg
+│   ├── icons/                # Logo : icon.svg (barre d'outils) + PNG 48/96/128 (AMO, about:addons)
 │   └── lib/
 │       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
 │       ├── groq.js           # Client Groq (modèles tour à tour, relances)
