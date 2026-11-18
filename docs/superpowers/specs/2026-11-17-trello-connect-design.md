@@ -52,7 +52,7 @@ Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Le
 | Nom public | **StageToTrello** (nom vérifié unique sur AMO) | #3 |
 | Résumé AMO et description du manifeste | « Ajoute l’offre de stage ou d’emploi ouverte à ton tableau Trello en un clic : titre « Entreprise - Poste », description complète, lien et étiquettes choisies automatiquement. » | #3 |
 | Langue | **Français uniquement** pour la v3 : interface, messages et fiche AMO en français. L'anglais (`_locales`) est reporté. | #4 |
-| Support | **Issues GitHub** : https://github.com/MimouniSaad/StageTrello/issues, avec le modèle `.github/ISSUE_TEMPLATE/bug.yml` | #7 |
+| Support | **Issues GitHub** : https://github.com/MimouniSaad/StageToTrello/issues, avec le modèle `.github/ISSUE_TEMPLATE/bug.yml` | #7 |
 | Modèles Groq | _à définir après la mesure des limites_ | #6, #11 |
 | Limite par utilisateur | **40 offres analysées par jour** (voir ci-dessous) | #5 |
 
