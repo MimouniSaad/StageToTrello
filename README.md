@@ -1,4 +1,4 @@
-# Stage → Trello
+# StageToTrello
 
 Extension Firefox qui transforme une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**. Rien à installer en dehors de Firefox : l'utilisateur clique sur **Connecter Trello**, autorise l'accès, et c'est prêt.
 
@@ -98,7 +98,7 @@ Remplis `extension/config.js` :
 
 Trello ne renvoie le jeton qu'aux adresses autorisées.
 
-1. Charge l'extension (voir l'étape 4), ouvre `about:debugging#/runtime/this-firefox`, clique sur **Examiner** à côté de « Stage vers Trello » et tape dans la console :
+1. Charge l'extension (voir l'étape 4), ouvre `about:debugging#/runtime/this-firefox`, clique sur **Examiner** à côté de « StageToTrello » et tape dans la console :
 
    ```js
    browser.identity.getRedirectURL()

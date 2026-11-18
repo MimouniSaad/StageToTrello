@@ -114,7 +114,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
 
   function authorizeUrl(key, redirectUrl) {
     const params = new URLSearchParams({
-      key, name: "Stage vers Trello", scope: "read,write", expiration: "never",
+      key, name: "StageToTrello", scope: "read,write", expiration: "never",
       response_type: "token", callback_method: "fragment", return_url: redirectUrl,
     });
     return `https://trello.com/1/authorize?${params}`;

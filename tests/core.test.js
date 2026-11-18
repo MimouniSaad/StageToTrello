@@ -71,7 +71,7 @@ test("authorizeUrl construit l'URL d'autorisation Trello", () => {
   assert.equal(u.pathname, "/1/authorize");
   const p = Object.fromEntries(u.searchParams);
   assert.deepEqual(p, {
-    key: "K", name: "Stage vers Trello", scope: "read,write", expiration: "never",
+    key: "K", name: "StageToTrello", scope: "read,write", expiration: "never",
     response_type: "token", callback_method: "fragment", return_url: redirect,
   });
 });
