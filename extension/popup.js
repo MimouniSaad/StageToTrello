@@ -1,9 +1,8 @@
 const $ = (id) => document.getElementById(id);
 let boards = [];
 let trello = null;
-let trelloToken = null;
 let quotaTimer = null;
-let busy = false;
+let busy = false;   // un ajout est en cours (lancé ici ou avant la réouverture du popup)
 
 async function quotaStatus() {
   const { [Quota.STORAGE_KEY]: usage } = await browser.storage.local.get(Quota.STORAGE_KEY);
@@ -29,14 +28,6 @@ async function renderQuota() {
   return st;
 }
 
-// Recopie le compteur du relais, qui fait foi (par compte Trello).
-async function syncQuota(usage) {
-  if (usage) await browser.storage.local.set({ [Quota.STORAGE_KEY]: Quota.fromServer(usage) });
-}
-
-// Levée quand le relais refuse l'analyse pour cause de limite quotidienne.
-class QuotaReached extends Error {}
-
 function setStatus(text, cls = "") {
   const el = $("status");
   el.className = cls;
@@ -56,7 +47,6 @@ function configError() {
 async function logout(message = "") {
   await browser.storage.local.remove("trelloToken");
   trello = null;
-  trelloToken = null;
   show("login");
   setStatus(message, message ? "err" : "");
 }
@@ -94,74 +84,47 @@ function fillLists(boardId, selectedListId) {
   }
 }
 
-async function readPage(tabId) {
-  try {
-    await browser.tabs.executeScript(tabId, { file: "lib/Readability.js" });
-    const [page] = await browser.tabs.executeScript(tabId, { file: "lib/page.js" });
-    if (!page) throw new Error("vide");
-    return page;
-  } catch (e) {
-    throw new Error("Impossible de lire cette page.");
+// Affiche le résultat d'un ajout fait par le script d'arrière-plan.
+async function showResult(result) {
+  if (!result) return;
+  if (result.code === "busy") {   // un ajout précédent continue : on attendra « addDone »
+    busy = true;
+    $("add").disabled = true;
+    return setStatus("Un ajout est déjà en cours…");
   }
+  busy = false;
+  if (result.ok) setStatus(`✓ ${result.name}`, "ok");
+  else if (result.code === "unauthorized") await logout(result.error);
+  else if (result.code === "daily_limit") setStatus("");   // le message s'affiche sous le bouton
+  else setStatus(`✗ ${result.error}`, "err");
+  await renderQuota();
 }
 
-// Analyse par IA via le relais ; mode de secours si le relais est saturé ou injoignable.
-async function extractInfo(page, labelNames, jp) {
-  try {
-    const res = await Relay.extract(page, labelNames,
-                                    { relayUrl: CONFIG.RELAY_URL, token: trelloToken });
-    await syncQuota(res.usage);
-    return res;
-  } catch (e) {
-    if (e instanceof Relay.RelayError) {
-      if (e.status === 401) throw new TrelloApi.TrelloError(e.message, 401);
-      if (e.code === "daily_limit") {
-        await syncQuota(Relay.usageOf(e.data));
-        throw new QuotaReached(e.message);
-      }
-    }
-    console.warn(`Analyse indisponible (${e.message}), mode de secours.`);
-  }
-  return Core.heuristicExtract(page.url, page.meta, page.text, jp, labelNames);
-}
-
+// L'ajout tourne dans le script d'arrière-plan : fermer le popup ne l'interrompt pas.
 async function add() {
   if (busy) return;
+  const board = $("board").value;
+  const list = $("list").value;
+  if (!board || !list) return setStatus("✗ Choisis un tableau et une liste.", "err");
+  if ((await quotaStatus()).blocked) return renderQuota();   // limite déjà connue
   busy = true;
   $("add").disabled = true;
   setStatus("Création de la carte…");
+  let result;
   try {
-    const board = $("board").value;
-    const list = $("list").value;
-    if (!board || !list) throw new Error("Choisis un tableau et une liste.");
     await browser.storage.local.set({ target: { board, list }, auto: $("auto").checked });
-
-    if ((await quotaStatus()).blocked) {  // limite déjà connue : pas de requête inutile
-      setStatus("");
-      return;
-    }
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    const page = await readPage(tab.id);
-    const jp = Core.parseJobPosting(page.ldjson);
-    const byName = await trello.boardLabels(board);
-    const raw = await extractInfo(page, Object.keys(byName), jp);
-    const info = Core.finalizeInfo(page.url, page.meta, page.text, jp, raw);
-    if (!info.found) throw new Error("Aucune offre trouvée sur cette page.");
-
-    const name = Core.cardName(info);
-    await trello.createCard({
-      listId: list, name, desc: info.desc, url: page.url,
-      labelIds: info.labels.filter((l) => l in byName).map((l) => byName[l]),
-    });
-    setStatus(`✓ ${name}`, "ok");
+    result = await browser.runtime.sendMessage({ type: "add", tabId: tab.id, board, list });
   } catch (e) {
-    if (e instanceof QuotaReached) setStatus("");  // le message de limite s'affiche sous le bouton
-    else await fail(e);
-  } finally {
-    busy = false;
-    await renderQuota();
+    result = { ok: false, code: "error", error: e.message };
   }
+  await showResult(result);
 }
+
+// Fin d'un ajout lancé avant la réouverture du popup.
+browser.runtime.onMessage.addListener((msg) => {
+  if (msg && msg.type === "addDone" && busy) showResult(msg.result);
+});
 
 async function init() {
   const err = configError();
@@ -169,7 +132,7 @@ async function init() {
     show("login");
     return setStatus(`✗ ${err}`, "err");
   }
-  ({ trelloToken } = await browser.storage.local.get("trelloToken"));
+  const { trelloToken } = await browser.storage.local.get("trelloToken");
   if (!trelloToken) {
     show("login");
     return setStatus("");
@@ -194,9 +157,14 @@ async function init() {
     }
     $("auto").checked = !!saved.auto;
     setStatus("");
+    const { adding } = (await browser.runtime.sendMessage({ type: "status" })) || {};
+    if (adding) {   // ajout lancé juste avant la réouverture du popup
+      busy = true;
+      setStatus("Création de la carte…");
+    }
     const st = await renderQuota();
 
-    if (saved.auto && target.list && !st.blocked) add();
+    if (saved.auto && target.list && !st.blocked && !adding) add();
   } catch (e) {
     await fail(e);
   }

@@ -19,6 +19,7 @@
     "activeTab",
     "storage",
     "identity",
+    "notifications",
     "https://api.trello.com/*",
     "https://stage-trello-relay.mimsaad03.workers.dev/*"
   ],
@@ -26,6 +27,10 @@
     "scripts": [
       "config.js",
       "lib/core.js",
+      "lib/trello.js",
+      "lib/relay.js",
+      "lib/quota.js",
+      "lib/add.js",
       "background.js"
     ],
     "persistent": false
