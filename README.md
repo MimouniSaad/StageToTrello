@@ -71,6 +71,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 │       └── Readability.js    # Mozilla Readability 0.6.0 (Apache-2.0)
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
+├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
 ├── package.json
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
@@ -180,6 +181,8 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 - **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
 - **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde qu'un compteur quotidien lié à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
 - **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
+
+- **Politique de confidentialité** : [`PRIVACY.md`](PRIVACY.md), accessible depuis le lien « Confidentialité » du popup (avant et après la connexion).
 
 ## Limites connues
 

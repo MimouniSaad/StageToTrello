@@ -12,7 +12,8 @@
     #status { margin-top: 10px; min-height: 1.2em; word-break: break-word; }
     #quota { margin-top: 6px; font-size: 12px; opacity: .8; }
     #quota.err { opacity: 1; }
-    #logout { display: block; margin-top: 10px; text-align: right; font-size: 12px; }
+    .links { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; }
+    .note { font-size: 12px; opacity: .8; }
     .ok { color: #2e7d32; }
     .err { color: #c62828; }
     [hidden] { display: none !important; }
@@ -22,6 +23,8 @@
   <section id="login" hidden>
     <p>Connecte ton compte Trello pour envoyer les offres sur tes tableaux.</p>
     <button id="connect">Connecter Trello</button>
+    <p class="note">Au clic, le texte de l'offre peut être analysé par notre service (IA Groq), puis la carte est créée dans ton Trello. Le contenu des offres n'est pas conservé ; seul un compteur quotidien l'est.</p>
+    <div class="links"><a href="#" class="privacy">Confidentialité</a></div>
   </section>
   <section id="main" hidden>
     <label for="board">Tableau</label>
@@ -31,7 +34,7 @@
     <label class="auto"><input type="checkbox" id="auto"> Envoyer dès l'ouverture</label>
     <button id="add">Ajouter à Trello</button>
     <div id="quota"></div>
-    <a href="#" id="logout">Déconnecter</a>
+    <div class="links"><a href="#" class="privacy">Confidentialité</a><a href="#" id="logout">Déconnecter</a></div>
   </section>
   <div id="status"></div>
   <script src="config.js"></script>
