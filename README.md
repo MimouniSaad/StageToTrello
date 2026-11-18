@@ -87,7 +87,9 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
+├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
+├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
 ├── package.json              # Scripts test, lint, package ; web-ext en dépendance de développement
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
@@ -138,7 +140,11 @@ Les installations permanentes passent par la version publiée sur AMO (voir ci-d
 Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
 
 1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
-2. **Version** : incrémente `"version"` dans `extension/manifest.json` (ex. `3.0` → `3.1`). Mozilla refuse de signer deux fois la même version.
+2. **Version** (SemVer `MAJEUR.MINEUR.CORRECTIF`) :
+   - **CORRECTIF** (`3.0.1`) : correction de bug ; **MINEUR** (`3.1.0`) : nouvelle fonctionnalité ou nouvel outillage ; **MAJEUR** (`4.0.0`) : changement incompatible (par exemple une API du relais qui oblige à mettre à jour l'extension) ;
+   - mets la même version dans `extension/manifest.json` et `package.json`, et transforme la section `[Non publié]` de `CHANGELOG.md` en `[x.y.z] - AAAA-MM-JJ` ; `npm run version:check` (aussi lancé par la CI) vérifie la cohérence ;
+   - une seule version pour tout le dépôt : une version qui ne touche pas `extension/` (CI, relais, documentation) est étiquetée et publiée sur GitHub, mais **pas envoyée sur AMO** ;
+   - Mozilla refuse de signer deux fois la même version.
 3. **Relais** : si `relay/` ou `extension/lib/core.js` (dont le relais réutilise le prompt) a changé, redéploie-le d'abord, en restant compatible avec la version de l'extension déjà publiée :
 
    ```bash
