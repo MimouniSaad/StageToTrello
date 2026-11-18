@@ -90,6 +90,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
 ├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
+├── scripts/release-notes.js  # Notes d'une version extraites de CHANGELOG.md (workflow Release)
 ├── package.json              # Scripts test, lint, package ; web-ext en dépendance de développement
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
@@ -164,8 +165,15 @@ Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chor
 6. **Publier sur `main`** : PR `develop` → `main`, puis étiquette la version :
 
    ```bash
-   git checkout main && git pull && git tag v<version> && git push origin v<version>
+   git checkout main && git pull && git tag -a v<version> -m "StageToTrello <version>" && git push origin v<version>
    ```
+
+   L'étiquette déclenche le workflow **Release** (`.github/workflows/release.yml`), qui :
+   - vérifie que l'étiquette correspond à la version du manifeste (`v3.1.0` ↔ `3.1.0`) et qu'elle est sur un commit de `main` ;
+   - relance `npm run version:check` et `npm run package` ;
+   - crée la **GitHub Release** « StageToTrello <version> » avec le zip et les notes de la section correspondante de `CHANGELOG.md` (`scripts/release-notes.js`).
+
+   C'est ce zip, construit et vérifié par la CI, qu'on envoie ensuite sur AMO (étape 5) si `extension/` a changé.
 
 7. **Politique de confidentialité** : si les données traitées changent, mets à jour `PRIVACY.md` (et sa date) dans la même version, ainsi que le champ correspondant sur AMO.
 
