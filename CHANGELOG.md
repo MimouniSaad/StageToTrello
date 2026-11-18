@@ -15,6 +15,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 ### Modifié
 - Nouveau design du popup, plus apaisant : palette douce, mode sombre dédié, compteur avec barre de progression, bandeau d'état avec icône, focus visible au clavier (#61).
+- Description de la carte mise en forme en Markdown : titres, sous-titres, paragraphes, gras, listes et liens de l'offre conservés, sans lignes parasites (#100).
 
 ## [3.0.0] - 2026-11-18
 

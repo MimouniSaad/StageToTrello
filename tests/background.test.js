@@ -35,6 +35,7 @@ function loadBackground({ authResult }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext('const CONFIG = { TRELLO_KEY: "K" };', ctx);
+  vm.runInContext(fs.readFileSync(path.join(ext, "lib/markdown.js"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(ext, "lib/core.js"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(ext, "background.js"), "utf8"), ctx);
   return { send: (msg) => listener(msg), stored, pings, timers };
@@ -98,6 +99,7 @@ function loadForAdd({ popupOpen = false } = {}) {
     },
   });
   vm.runInContext('const CONFIG = { TRELLO_KEY: "K", RELAY_URL: "https://relay.test" };', ctx);
+  vm.runInContext(fs.readFileSync(path.join(ext, "lib/markdown.js"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(ext, "lib/core.js"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(ext, "background.js"), "utf8"), ctx);
   return { send: (msg) => listener(msg), timers, badges, notifications, broadcasts, runs };
