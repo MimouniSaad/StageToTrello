@@ -63,6 +63,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 │       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
 │       ├── page.js           # Script injecté dans l'onglet pour lire la page
 │       └── Readability.js    # Mozilla Readability 0.6.0 (Apache-2.0)
+├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── package.json
 └── docs/superpowers/         # Design et plan d'implémentation
