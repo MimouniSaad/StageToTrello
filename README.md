@@ -151,7 +151,7 @@ Si la page ne contient pas d'offre (page générique, lien expiré, liste de ré
 | Sans IA | `lib/core.js` | Si la page publie un `JobPosting` JSON-LD avec entreprise **et** intitulé : carte créée directement, sans appel au relais ni quota consommé. Intitulé nettoyé (`cleanTitle` : H/F, durée, « (stage de fin d'études) », ville), étiquettes par mots-clés |
 | Extraction | `lib/relay.js`, `lib/core.js` | Envoie les 10 000 premiers caractères au relais, qui interroge Groq ; lit 4 lignes : `FOUND`, `COMPANY`, `TITLE`, `LABELS` |
 | Limite | `lib/quota.js` | Copie locale du compteur du relais (`used`, `limit`, `resetAt`) : offres restantes, bouton bloqué et temps d'attente quand la limite est atteinte |
-| Secours | `lib/core.js` | Si le relais est saturé ou injoignable : la carte n'est créée que si la page publie un `JobPosting` JSON-LD (entreprise ou intitulé) ; étiquettes par mots-clés (`KEYWORDS`). Sinon : « Analyse indisponible et offre non détectée automatiquement, réessaie plus tard. » |
+| Secours | `lib/core.js` | Si le relais est saturé ou injoignable : la carte n'est créée que si la page publie un `JobPosting` JSON-LD (entreprise ou intitulé) ; étiquettes par mots-clés (`keywordLabels`). Sinon : « Analyse indisponible et offre non détectée automatiquement, réessaie plus tard. » |
 | Description | `lib/core.js` | Description JSON-LD si elle dépasse 300 caractères, sinon texte de la page ; tronquée à 16 000 caractères (limite Trello : 16 384) |
 | Trello | `lib/trello.js` | Tableaux, étiquettes, création de la carte et pièce jointe |
 | Ajout | `background.js`, `lib/add.js` | Le popup envoie `{type: "add", tabId, board, list}` ; l'arrière-plan enchaîne lecture, analyse et création, un seul ajout à la fois, puis affiche le badge et, si le popup est fermé, une notification |
@@ -161,7 +161,7 @@ Points notables :
 - **Garde-fou `FOUND`** : si le modèle estime que la page n'est pas une offre précise, rien n'est créé.
 - **Réponses du relais** : `401` → jeton effacé et retour à **Connecter Trello** ; `429` (limite du jour) → aucune carte, message de limite avec le temps d'attente ; `503`, `502` ou relais injoignable (délai de 25 s) → mode de secours. Le relais essaie lui-même les modèles Groq tour à tour.
 - **Authentification Trello** : clé et jeton dans l'en-tête `Authorization: OAuth oauth_consumer_key="…", oauth_token="…"`, jamais dans l'URL. Si Trello répond 401 (jeton révoqué), l'extension efface le jeton et réaffiche **Connecter Trello**.
-- **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau choisi. `KEYWORDS` (mode de secours) doit utiliser les mêmes noms.
+- **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau choisi. Sans IA (`JobPosting` ou mode de secours), `keywordLabels` rattache chaque étiquette à un thème (DevOps, Cloud, Cybersécurité, Data, Développement, Marketing, RH…) d'après son nom, sans tenir compte de la casse ni des accents, et la choisit si l'offre contient un mot-clé du thème ou le nom de l'étiquette ; celles trouvées dans le titre passent en premier. Ça marche avec les étiquettes de n'importe quel tableau ; pour ajouter un thème, complète `THEMES` dans `lib/core.js`.
 - **Connexion et ajout en arrière-plan** : Firefox ferme le popup dès qu'il perd le focus ; la connexion Trello et l'ajout des offres tournent donc dans `background.js`, gardé éveillé pendant le traitement. Un popup rouvert pendant un ajout affiche « Création de la carte… » puis le résultat.
 
 ## Tests
@@ -202,7 +202,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 | « Impossible de lire cette page. » | Page protégée de Firefox | Ouvrir l'offre dans un onglet normal |
 | « Aucune offre trouvée sur cette page. » | Page générique, liste, lien expiré | Ouvrir l'offre elle-même |
 | « Analyse indisponible et offre non détectée automatiquement… » | Relais saturé ou injoignable, et la page ne publie pas de `JobPosting` | Réessayer un peu plus tard |
-| Étiquettes absentes ou peu pertinentes | Relais saturé ou injoignable (mode de secours) ou étiquettes sans nom | Vérifier le relais (`curl …/` doit répondre `{"ok":true}`, logs : `npx wrangler tail`) ; nommer les étiquettes Trello ; aligner `KEYWORDS` |
+| Étiquettes absentes ou peu pertinentes | Relais saturé ou injoignable (mode de secours) ou étiquettes sans nom | Vérifier le relais (`curl …/` doit répondre `{"ok":true}`, logs : `npx wrangler tail`) ; nommer les étiquettes Trello ; au besoin, compléter `THEMES` dans `lib/core.js` |
 | « Limite de 40 offres par jour atteinte » | Limite quotidienne du relais | Attendre l'heure de réinitialisation affichée |
 
 Pour voir les messages techniques (par exemple « Analyse indisponible ») : `about:debugging#/runtime/this-firefox` → **Examiner** sur l'extension.
