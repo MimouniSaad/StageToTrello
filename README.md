@@ -11,22 +11,34 @@ Chaque carte contient :
 
 L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un modèle d'IA hébergé chez Groq, interrogé via un petit relais (Cloudflare Worker) qui garde la clé Groq. Ça fonctionne sur n'importe quel site, sans règles à écrire site par site, et l'extension ne contient aucun secret.
 
+
+> StageToTrello est un projet indépendant, **non affilié à Trello ni à Atlassian**. Politique de confidentialité : [`PRIVACY.md`](PRIVACY.md).
 ---
 
 ## Sommaire
 
-1. [Comment ça marche](#comment-ça-marche)
-2. [Contenu du dépôt](#contenu-du-dépôt)
-3. [Mise en place (propriétaire de l'extension)](#mise-en-place-propriétaire-de-lextension)
-4. [Utilisation](#utilisation)
-5. [Détail du fonctionnement](#détail-du-fonctionnement)
-6. [Tests](#tests)
-7. [Sécurité et confidentialité](#sécurité-et-confidentialité)
-8. [Limites connues](#limites-connues)
-9. [Dépannage](#dépannage)
-10. [Licence](#licence)
+1. [Installation](#installation)
+2. [Comment ça marche](#comment-ça-marche)
+3. [Contenu du dépôt](#contenu-du-dépôt)
+4. [Mise en place (propriétaire de l'extension)](#mise-en-place-propriétaire-de-lextension)
+5. [Publier une nouvelle version](#publier-une-nouvelle-version)
+6. [Utilisation](#utilisation)
+7. [Détail du fonctionnement](#détail-du-fonctionnement)
+8. [Tests](#tests)
+9. [Sécurité et confidentialité](#sécurité-et-confidentialité)
+10. [Limites connues](#limites-connues)
+11. [Dépannage](#dépannage)
+12. [Licence](#licence)
 
 ---
+
+## Installation
+
+Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente sur ordinateur) :
+
+1. Installe **StageToTrello** depuis le site des modules complémentaires de Firefox (<https://addons.mozilla.org>) : le lien direct sera ajouté ici dès la publication.
+2. Épingle le bouton dans la barre d'outils (icône de pièce de puzzle → ⚙ à côté de StageToTrello → **Épingler à la barre d'outils**).
+3. Ouvre le popup, clique sur **Connecter Trello** et autorise l'accès. C'est tout : aucune clé à créer, aucun réglage.
 
 ## Comment ça marche
 
@@ -113,14 +125,25 @@ Trello ne renvoie le jeton qu'aux adresses autorisées.
 
 Cette adresse dépend de l'identifiant de l'extension (`browser_specific_settings.gecko.id` dans `manifest.json`) : si tu le changes, recommence cette étape.
 
-### 4. Installer l'extension
+### 4. Tester l'extension
 
-**Pour tester (temporaire, disparaît au redémarrage de Firefox)** : `about:debugging#/runtime/this-firefox` → **Charger un module complémentaire temporaire…** → `extension/manifest.json`.
+`about:debugging#/runtime/this-firefox` → **Charger un module complémentaire temporaire…** → `extension/manifest.json`. L'extension disparaît au redémarrage de Firefox.
 
-**Pour une installation permanente** : Firefox n'accepte que les extensions signées par Mozilla. La signature « non listée » est gratuite et l'extension reste privée.
+Les installations permanentes passent par la version publiée sur AMO (voir ci-dessous).
 
-1. Si besoin, change l'identifiant dans `extension/manifest.json` pour qu'il soit unique (puis refais l'étape 3).
-2. Crée le paquet :
+## Publier une nouvelle version
+
+Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`.
+
+1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
+2. **Version** : incrémente `"version"` dans `extension/manifest.json` (ex. `3.0` → `3.1`). Mozilla refuse de signer deux fois la même version.
+3. **Relais** : si `relay/` ou `extension/lib/core.js` (dont le relais réutilise le prompt) a changé, redéploie-le d'abord, en restant compatible avec la version de l'extension déjà publiée :
+
+   ```bash
+   cd relay && npx wrangler deploy && cd ..
+   ```
+
+4. **Paquet** :
 
    ```bash
    npm install          # une fois : installe web-ext (version figée)
@@ -129,10 +152,14 @@ Cette adresse dépend de l'identifiant de l'extension (`browser_specific_setting
 
    Le script vérifie le manifeste et `config.js` (clé Trello, adresse du relais autorisée), l'absence de clé Groq dans `extension/`, la présence des icônes et des mentions de licence, puis lance les tests et `web-ext lint` (0 erreur exigée) avant de créer le zip. Il s'arrête au premier problème.
 
-3. Envoie `web-ext-artifacts/stagetotrello-<version>.zip` sur <https://addons.mozilla.org/developers/> (**Submit a New Add-on** → **On your own**). À la question sur le code source, réponds **No** (aucune minification ni outil de build).
-4. Télécharge le `.xpi` signé et distribue-le. Installation : `about:addons` → ⚙ → **Installer un module depuis un fichier…**.
+5. **Envoi sur AMO** : <https://addons.mozilla.org/developers/> → StageToTrello → **Envoyer une nouvelle version** (première fois : **Submit a New Add-on** → **On this site**). Envoie le zip ; à la question sur le code source, réponds **Non** (aucune minification ni outil de build). Ajoute des notes de version et, pour les relecteurs, comment tester (connexion avec leur propre compte Trello, rôle du relais).
+6. **Publier sur `main`** : PR `develop` → `main`, puis étiquette la version :
 
-Pour publier une mise à jour, incrémente `"version"` dans `manifest.json` : Mozilla refuse de signer deux fois la même version.
+   ```bash
+   git checkout main && git pull && git tag v<version> && git push origin v<version>
+   ```
+
+7. **Politique de confidentialité** : si les données traitées changent, mets à jour `PRIVACY.md` (et sa date) dans la même version, ainsi que le champ correspondant sur AMO.
 
 ## Utilisation
 

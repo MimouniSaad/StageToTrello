@@ -1,5 +1,7 @@
 # Extension autonome avec connexion Trello
 
+> **État : publiée en version 3.0.** La décision initiale (clé Groq intégrée à l'extension) a été remplacée par un relais Cloudflare quand l'extension a été destinée à une publication publique sur AMO : voir « Approches » et « Décisions de la version 3.0 ».
+
 ## Intention
 
 Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Les utilisateurs n'ont plus à créer une clé et un jeton Trello à la main ; ils cliquent sur « Connecter Trello », autorisent l'application sur la page officielle de Trello, et le jeton arrive directement dans l'extension. Peu d'utilisateurs au départ.
@@ -18,25 +20,25 @@ Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Le
 
 ## Anti-objectifs
 
-- Publier la clé Groq sur GitHub.
-- Réintroduire un serveur (proxy compris).
+- Publier la clé Groq sur GitHub ou dans le paquet de l'extension.
+- Réintroduire un serveur **que l'utilisateur doit installer**. Le relais hébergé (Cloudflare Worker), invisible pour l'utilisateur, est accepté depuis la version 3.0.
 
 ## Approches
 
-1. **Retenue : clé Groq du propriétaire intégrée à l'extension**, dans un `config.js` ignoré par git. Risque accepté : la clé est lisible par quiconque ouvre le paquet ; quota gratuit partagé.
+1. Clé Groq du propriétaire intégrée à l'extension : retenue pour la version 2.0 (diffusion restreinte), **abandonnée en 3.0** : sur AMO, n'importe qui peut ouvrir le paquet, copier la clé et épuiser le quota partagé.
 2. Clé Groq saisie par chaque utilisateur : refusée par le propriétaire (trop de friction).
-3. Proxy hébergé gardant la clé : refusé, recrée un serveur.
+3. **Retenue en 3.0 : relais hébergé gardant la clé** (Cloudflare Worker, offre gratuite). Il vérifie le jeton Trello de l'utilisateur, applique une limite quotidienne par compte Trello et construit lui-même le prompt, pour ne pas servir de proxy LLM générique. L'onboarding reste « Connecter Trello » et rien d'autre.
 
 ## Décisions
 
 - **Supprimés** : `server.py`, `add_stage.py`, `requirements.txt`, `systemd/`, `.env.example`, `extension/options.html`, `extension/options.js`.
-- **`extension/config.js`** (ignoré par git) : `TRELLO_KEY` (publique), `GROQ_API_KEY`, `GROQ_MODELS`, `DEFAULT_LIST` ; `config.example.js` commité.
+- **`extension/config.js`** : en 2.0, ignoré par git avec la clé Groq ; en 3.0, commité et sans secret (`TRELLO_KEY` publique, `RELAY_URL`, `DEFAULT_LIST`), voir plus bas.
 - **Connexion** : `browser.identity.launchWebAuthFlow` vers `https://trello.com/1/authorize?key=…&name=Stage%20vers%20Trello&scope=read,write&expiration=never&response_type=token&callback_method=fragment&return_url=<browser.identity.getRedirectURL()>` ; jeton lu dans le fragment `#token=…`, stocké dans `storage.local`. Lien « Déconnecter » qui l'efface. Un `401` de Trello efface le jeton et réaffiche « Connecter Trello ».
 - **Popup** : écran de connexion si pas de jeton, sinon l'écran actuel (tableau, liste, envoi automatique, bouton).
 - **Lecture de la page** dans l'onglet actif via `tabs.executeScript` : JSON-LD `JobPosting`, `og:title`, `og:site_name`, `<title>`, texte principal via Mozilla Readability (fichier embarqué, licence Apache-2.0) avec repli sur `document.body.innerText`.
 - **Logique reprise de `add_stage.py`** : prompt 4 lignes (`FOUND`, `COMPANY`, `TITLE`, `LABELS`), texte limité à 10 000 caractères, essais des modèles tour à tour sur 429/5xx jusqu'à 3 tours, `reasoning_effort: low` pour `gpt-oss`, mode de secours `KEYWORDS`, description JSON-LD si > 300 caractères sinon texte de la page, tronquée à 16 000, titre `Entreprise - Poste`, URL en pièce jointe.
 - **Trello** : en-tête `Authorization: OAuth oauth_consumer_key="…", oauth_token="…"`, erreurs lisibles (code + message), liste introuvable signalée clairement.
-- **Manifeste** : MV2, version 2.0, permissions `activeTab`, `storage`, `identity`, `https://api.trello.com/*`, `https://api.groq.com/*` ; `data_collection_permissions` `websiteContent`.
+- **Manifeste** : MV2 ; en 3.0, permissions `activeTab`, `storage`, `identity`, `notifications`, `https://api.trello.com/*` et l'adresse du relais (plus `api.groq.com`) ; `data_collection_permissions` `websiteContent`.
 - **README** réécrit, avec l'étape unique côté propriétaire : ajouter l'URL de redirection de l'extension dans les « Allowed origins » de l'app Trello.
 
 ## Laissé au constructeur
@@ -94,3 +96,17 @@ Conséquences :
 ### Configuration commitée (version 3.0)
 
 Depuis le relais, `extension/config.js` ne contient plus aucun secret (`TRELLO_KEY` publique, `RELAY_URL`, `DEFAULT_LIST`). Il est **commité** et `config.example.js` est supprimé : le paquet envoyé à AMO correspond exactement au dépôt. La clé Groq n'existe que dans les secrets du relais Cloudflare.
+
+## Décisions de la version 3.0
+
+| Sujet | Décision | Tickets |
+|---|---|---|
+| Analyse par IA | Via le relais `stage-trello-relay.mimsaad03.workers.dev` ; clé Groq en secret Cloudflare ; prompt construit côté serveur ; passage d'un modèle à l'autre sur 429/5xx | #18–#23, #26 |
+| Limite | 40 analyses réussies par jour et par compte Trello, comptées par le relais (minuit UTC) ; copie locale pour l'affichage et le temps d'attente | #5, #20, #26 |
+| Ajout | Dans le script d'arrière-plan : un seul à la fois, badge, notification si le popup est fermé | #27 |
+| Sans IA | Page avec `JobPosting` complet (entreprise et intitulé) : carte créée directement, sans quota ; intitulé nettoyé (`cleanTitle`) | #29 |
+| Mode de secours | Relais saturé ou injoignable : carte seulement si `JobPosting` ; sinon message explicite | #28 |
+| Étiquettes sans IA | `THEMES` + `keywordLabels` : rattachement par nom (sans casse ni accents), valable pour n'importe quel tableau | #30 |
+| Confidentialité | `PRIVACY.md` ; phrase et lien « Confidentialité » dans le popup | #31 |
+| Paquet | `npm run package` : vérifications (config, secrets, licences), tests, lint, zip | #40, #41 |
+| Branches | Développement sur `develop` ; `main` ne reçoit que des versions validées | — |
