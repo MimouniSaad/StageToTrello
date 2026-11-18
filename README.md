@@ -73,7 +73,8 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
-├── package.json
+├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
+├── package.json              # Scripts test, lint, package ; web-ext en dépendance de développement
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
 
@@ -119,13 +120,16 @@ Cette adresse dépend de l'identifiant de l'extension (`browser_specific_setting
 **Pour une installation permanente** : Firefox n'accepte que les extensions signées par Mozilla. La signature « non listée » est gratuite et l'extension reste privée.
 
 1. Si besoin, change l'identifiant dans `extension/manifest.json` pour qu'il soit unique (puis refais l'étape 3).
-2. Crée le paquet (il contient `config.js`) :
+2. Crée le paquet :
 
    ```bash
-   cd extension && zip -r ../stage-trello.zip . && cd ..
+   npm install          # une fois : installe web-ext (version figée)
+   npm run package      # → web-ext-artifacts/stagetotrello-<version>.zip
    ```
 
-3. Envoie `stage-trello.zip` sur <https://addons.mozilla.org/developers/> (**Submit a New Add-on** → **On your own**). À la question sur le code source, réponds **No** (aucune minification ni outil de build).
+   Le script vérifie le manifeste et `config.js` (clé Trello, adresse du relais autorisée), l'absence de clé Groq dans `extension/`, la présence des icônes et des mentions de licence, puis lance les tests et `web-ext lint` (0 erreur exigée) avant de créer le zip. Il s'arrête au premier problème.
+
+3. Envoie `web-ext-artifacts/stagetotrello-<version>.zip` sur <https://addons.mozilla.org/developers/> (**Submit a New Add-on** → **On your own**). À la question sur le code source, réponds **No** (aucune minification ni outil de build).
 4. Télécharge le `.xpi` signé et distribue-le. Installation : `about:addons` → ⚙ → **Installer un module depuis un fichier…**.
 
 Pour publier une mise à jour, incrémente `"version"` dans `manifest.json` : Mozilla refuse de signer deux fois la même version.
