@@ -1,0 +1,66 @@
+name: Signaler un problème
+description: L'extension ne fonctionne pas comme prévu (carte non créée, mauvaise extraction, erreur de connexion…)
+title: "fix/"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce problème.
+        **Ne colle jamais ton jeton Trello ni aucune clé** dans ce formulaire : il est public.
+  - type: input
+    id: version-extension
+    attributes:
+      label: Version de StageToTrello
+      description: Visible dans `about:addons` → StageToTrello.
+      placeholder: "ex. 3.0"
+    validations:
+      required: true
+  - type: input
+    id: version-firefox
+    attributes:
+      label: Version de Firefox
+      description: Menu ☰ → Aide → À propos de Firefox.
+      placeholder: "ex. 145.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: etape
+    attributes:
+      label: À quelle étape le problème survient-il ?
+      options:
+        - Connexion à Trello
+        - Chargement des tableaux et des listes
+        - Lecture de la page de l'offre
+        - Extraction (entreprise, poste, étiquettes)
+        - Création de la carte Trello
+        - Autre
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: URL de l'offre
+      description: Seulement si l'offre est publique. Laisse vide si la page demande une connexion.
+      placeholder: "https://…"
+  - type: textarea
+    id: message
+    attributes:
+      label: Message affiché
+      description: Le texte en rouge dans le popup (après ✗), ou une capture d'écran.
+      render: text
+  - type: textarea
+    id: attendu
+    attributes:
+      label: Ce qui s'est passé et ce que tu attendais
+      placeholder: |
+        J'ai cliqué sur « Ajouter à Trello » sur une offre Welcome to the Jungle…
+        La carte a été créée avec le titre « … » au lieu de « Entreprise - Poste ».
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Erreurs de la console (facultatif)
+      description: "`about:debugging#/runtime/this-firefox` → StageToTrello → Examiner → onglet Console. Vérifie qu'aucun jeton n'apparaît avant de coller."
+      render: text
