@@ -61,7 +61,7 @@ const AddOffer = (() => {
         raw = C.heuristicExtract(page.url, page.meta, page.text, jp, labelNames);
       }
 
-      const info = C.finalizeInfo(page.url, page.meta, page.text, jp, raw);
+      const info = C.finalizeInfo(page.url, page.meta, page.text, jp, raw, page.html);
       if (!info.found) {
         return { ok: false, code: "error", error: raw.fallback
           ? "Analyse indisponible et offre non détectée automatiquement, réessaie plus tard."

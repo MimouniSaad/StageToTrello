@@ -26,6 +26,7 @@
   "background": {
     "scripts": [
       "config.js",
+      "lib/markdown.js",
       "lib/core.js",
       "lib/trello.js",
       "lib/relay.js",

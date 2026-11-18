@@ -29,7 +29,7 @@ test("parseJobPosting lit @graph, @type liste et convertit la description", () =
     '{"@graph":[{"@type":["JobPosting"],"title":"Dev","hiringOrganization":{"name":"Acme"},"description":"<p>A &amp; B</p><ul><li>x</li></ul>"}]}',
     "pas du json",
   ]);
-  assert.deepEqual(jp, { company: "Acme", title: "Dev", desc: "A & B\nx", city: "" });
+  assert.deepEqual(jp, { company: "Acme", title: "Dev", desc: "A & B\n\n- x", city: "" });
 });
 
 test("parseJobPosting lit la ville (jobLocation objet ou liste)", () => {

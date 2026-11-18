@@ -79,6 +79,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 │   └── lib/
 │       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
 │       ├── add.js            # Ajout d'une offre : lecture de la page, analyse, création de la carte
+│       ├── markdown.js       # Conversion HTML → Markdown de la description de la carte
 │       ├── relay.js          # Client du relais (analyse par IA, compteur quotidien)
 │       ├── quota.js          # Limite quotidienne : copie locale du compteur du relais, temps d'attente
 │       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
@@ -108,7 +109,7 @@ Ces étapes ne sont à faire qu'une fois, par la personne qui publie l'extension
 
 `extension/config.js` est commité avec les valeurs de l'extension publiée. Pour pointer vers ta propre app Trello ou ton propre relais (fork), modifie-le :
 
-| Champ | Description |
+| Champ | Description | `lib/markdown.js`, `lib/core.js` | Convertie en **Markdown** (affiché par Trello) : titres, sous-titres, paragraphes, gras, italique, listes et liens conservés ; scripts, images, formulaires et texte caché ignorés ; « faux titres » (`<strong>Missions :</strong>`, lignes en majuscules) transformés en titres. Source : description JSON-LD si elle dépasse 300 caractères, sinon l'article extrait par Readability. Coupée à 16 000 caractères sur une fin de paragraphe (limite Trello : 16 384). L'IA reçoit toujours le texte brut |
 |---|---|
 | `TRELLO_KEY` | Clé de l'application Trello (étape 1) |
 | `RELAY_URL` | Adresse du relais déployé (`https://stage-trello-relay.mimsaad03.workers.dev`, voir `relay/README.md`) |

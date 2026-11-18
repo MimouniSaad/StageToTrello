@@ -1,5 +1,6 @@
 // Logique pure : prompt, lecture des réponses, données structurées, mode de secours.
 const Core = (() => {
+  const Md = typeof Markdown !== "undefined" ? Markdown : require("./markdown.js");
   const MAX_PROMPT_CHARS = 10000;   // reste sous la limite de tokens par minute de l'offre gratuite Groq
   // Thèmes pour choisir les étiquettes sans IA, quel que soit le tableau de l'utilisateur.
   // Une étiquette est rattachée au PREMIER thème dont un « nom » apparaît dans son nom
@@ -99,18 +100,6 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     };
   }
 
-  function htmlToText(html) {
-    const entities = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " };
-    return html
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|li|div|h[1-6])\s*>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, e) => entities[e])
-      .split("\n").map((l) => l.trim()).join("\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  }
-
   function isJobPosting(item) {
     const t = item && item["@type"];
     return t === "JobPosting" || (Array.isArray(t) && t.includes("JobPosting"));
@@ -158,7 +147,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
         return {
           company: String(company).trim(),
           title: String(it.title || "").trim(),
-          desc: htmlToText(String(it.description || "")),
+          desc: Md.htmlToMarkdown(String(it.description || "")),
           city: jobCity(it.jobLocation),
         };
       }
@@ -190,12 +179,16 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
 
   const hasFullJobPosting = (jp) => Boolean(jp && jp.company && jp.title);
 
-  function finalizeInfo(url, meta, text, jp, info) {
+  // Description de la carte, en Markdown : celle du JobPosting si elle est assez longue,
+  // sinon l'article extrait par Readability (html), sinon le texte brut de la page.
+  function finalizeInfo(url, meta, text, jp, info, html = "") {
+    const desc = jp && jp.desc.length > 300 ? jp.desc
+      : (html && Md.htmlToMarkdown(html)) || Md.htmlToMarkdown(text);
     return {
       ...info,
       company: info.company || (jp && jp.company) || meta.site || domainName(url),
       title: info.title || (jp && jp.title) || meta.title || "Offre",
-      desc: jp && jp.desc.length > 300 ? jp.desc : text,
+      desc,
     };
   }
 
@@ -215,7 +208,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
   }
 
   return {
-    THEMES, MAX_PROMPT_CHARS, keywordLabels, buildPrompt, parseLlm, htmlToText,
+    THEMES, MAX_PROMPT_CHARS, keywordLabels, buildPrompt, parseLlm,
     parseJobPosting, cleanTitle, heuristicExtract, fromJobPosting, hasFullJobPosting,
     finalizeInfo, cardName, authorizeUrl, tokenFromRedirect,
   };
