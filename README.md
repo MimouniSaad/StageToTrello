@@ -148,6 +148,7 @@ Si la page ne contient pas d'offre (page générique, lien expiré, liste de ré
 |---|---|---|
 | Connexion | `background.js` | `browser.identity.launchWebAuthFlow` vers `https://trello.com/1/authorize` (`scope=read,write`, `expiration=never`, `callback_method=fragment`) ; jeton lu dans le fragment de l'URL de retour et stocké dans `storage.local` |
 | Lecture | `lib/page.js` | Injecté dans l'onglet : JSON-LD, `og:title`, `og:site_name`, `<title>`, texte principal via Readability (repli sur le texte visible) |
+| Sans IA | `lib/core.js` | Si la page publie un `JobPosting` JSON-LD avec entreprise **et** intitulé : carte créée directement, sans appel au relais ni quota consommé. Intitulé nettoyé (`cleanTitle` : H/F, durée, « (stage de fin d'études) », ville), étiquettes par mots-clés |
 | Extraction | `lib/relay.js`, `lib/core.js` | Envoie les 10 000 premiers caractères au relais, qui interroge Groq ; lit 4 lignes : `FOUND`, `COMPANY`, `TITLE`, `LABELS` |
 | Limite | `lib/quota.js` | Copie locale du compteur du relais (`used`, `limit`, `resetAt`) : offres restantes, bouton bloqué et temps d'attente quand la limite est atteinte |
 | Secours | `lib/core.js` | Si le relais est saturé ou injoignable : la carte n'est créée que si la page publie un `JobPosting` JSON-LD (entreprise ou intitulé) ; étiquettes par mots-clés (`KEYWORDS`). Sinon : « Analyse indisponible et offre non détectée automatiquement, réessaie plus tard. » |
@@ -182,7 +183,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 
 ## Limites connues
 
-- **40 analyses par jour et par compte Trello** au maximum, comptées par le relais (remise à zéro à minuit UTC, soit 01:00 ou 02:00 en France). Seules les analyses réussies comptent. Quand la limite est atteinte, le popup indique le temps restant avant la réinitialisation.
+- **40 analyses par jour et par compte Trello** au maximum, comptées par le relais (remise à zéro à minuit UTC, soit 01:00 ou 02:00 en France). Seules les analyses réussies comptent ; les offres qui publient un `JobPosting` complet sont ajoutées sans IA et ne comptent pas. Quand la limite est atteinte, le popup indique le temps restant avant la réinitialisation.
 - Il faut l'**URL directe de l'offre**. Sur une page de liste ou une page générique, l'extension répond « Aucune offre trouvée sur cette page. ».
 - Les pages protégées de Firefox (`about:`, boutique d'extensions) ne peuvent pas être lues.
 - Sans données `JobPosting`, la description est le texte extrait par Readability : il peut contenir des éléments parasites ; relis la carte en cas de doute.

@@ -44,7 +44,10 @@ const AddOffer = (() => {
       const labelNames = Object.keys(byName);
 
       let raw;
-      try {
+      if (C.hasFullJobPosting(jp)) {
+        // Entreprise et intitulé déjà publiés par la page : pas d'appel à l'IA, pas de quota consommé.
+        raw = C.fromJobPosting(page.url, page.meta, page.text, jp, labelNames);
+      } else try {
         raw = await R.extract(page, labelNames, { relayUrl: config.RELAY_URL, token, fetchFn });
         await syncQuota(raw.usage);
       } catch (e) {
