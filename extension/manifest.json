@@ -20,7 +20,7 @@
     "storage",
     "identity",
     "https://api.trello.com/*",
-    "https://api.groq.com/*"
+    "https://stage-trello-relay.mimsaad03.workers.dev/*"
   ],
   "background": {
     "scripts": [

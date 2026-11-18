@@ -1,5 +1,7 @@
-// Limite d'utilisation : nombre d'offres analysées par jour et par profil Firefox.
-// Le jour est calé sur minuit UTC, comme le futur relais qui fera foi côté serveur.
+// Limite d'utilisation : nombre d'offres analysées par jour.
+// Le relais fait foi (par compte Trello) ; l'extension garde une copie locale de son compteur
+// pour afficher les offres restantes et bloquer le bouton sans requête inutile.
+// Le jour est calé sur minuit UTC, comme le relais.
 const Quota = (() => {
   const DAILY_LIMIT = 40;
   const STORAGE_KEY = "usage";
@@ -12,7 +14,7 @@ const Quota = (() => {
   }
 
   // usage = { day: "AAAA-MM-JJ", count: n } tel que stocké ; un autre jour repart à zéro.
-  function status(usage, now, limit = DAILY_LIMIT) {
+  function status(usage, now, limit = (usage && usage.limit) || DAILY_LIMIT) {
     const used = usage && usage.day === dayKey(now) ? usage.count : 0;
     return {
       used, limit,
@@ -22,8 +24,9 @@ const Quota = (() => {
     };
   }
 
-  function consume(usage, now) {
-    return { day: dayKey(now), count: status(usage, now).used + 1 };
+  // Copie locale du compteur renvoyé par le relais ({ used, limit, resetAt }).
+  function fromServer({ used, limit, resetAt }) {
+    return { day: dayKey(resetAt - 1), count: used, limit: limit || DAILY_LIMIT };
   }
 
   // 3 h 12 min, 45 min, moins d'une minute
@@ -45,8 +48,8 @@ const Quota = (() => {
       `${formatWait(st.resetAt - now)} (à ${formatClock(st.resetAt)}).`;
   }
 
-  return { DAILY_LIMIT, STORAGE_KEY, dayKey, nextReset, status, consume, formatWait,
-           formatClock, blockedMessage };
+  return { DAILY_LIMIT, STORAGE_KEY, dayKey, nextReset, status, fromServer,
+           formatWait, formatClock, blockedMessage };
 })();
 
 if (typeof module === "object") module.exports = Quota;
