@@ -174,6 +174,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 
 ## Limites connues
 
+- **40 offres analysées par jour** au maximum (remise à zéro à minuit UTC, soit 01:00 ou 02:00 en France). Quand la limite est atteinte, le popup indique le temps restant avant la réinitialisation.
 - Il faut l'**URL directe de l'offre**. Sur une page de liste ou une page générique, l'extension répond « Aucune offre trouvée sur cette page. ».
 - Les pages protégées de Firefox (`about:`, boutique d'extensions) ne peuvent pas être lues.
 - Sans données `JobPosting`, la description est le texte extrait par Readability : il peut contenir des éléments parasites ; relis la carte en cas de doute.

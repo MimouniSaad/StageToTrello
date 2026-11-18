@@ -54,4 +54,12 @@ Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Le
 | Langue | **Français uniquement** pour la v3 : interface, messages et fiche AMO en français. L'anglais (`_locales`) est reporté. | #4 |
 | Support | **Issues GitHub** : https://github.com/MimouniSaad/StageTrello/issues, avec le modèle `.github/ISSUE_TEMPLATE/bug.yml` | #7 |
 | Modèles Groq | _à définir après la mesure des limites_ | #6, #11 |
-| Limite par utilisateur | _à définir après la mesure des limites_ | #5, #11 |
+| Limite par utilisateur | **40 offres analysées par jour** (voir ci-dessous) | #5 |
+
+### Limite d'utilisation (#5) — relevé du 18/11/2026
+
+- **Limite** : 40 offres analysées par jour. Chaque analyse compte, même si aucune carte n'est créée (page qui n'est pas une offre, erreur Trello) : c'est l'analyse qui consomme le quota Groq partagé.
+- **Réinitialisation** : chaque jour à minuit UTC (01:00 en heure d'hiver française, 02:00 en heure d'été), comme le futur relais. Une fois la limite atteinte, le bouton est bloqué et le popup affiche le temps restant et l'heure locale de réinitialisation, rafraîchis toutes les 20 s.
+- **Mise en œuvre actuelle** : compteur dans `storage.local` (`lib/quota.js`), donc par profil Firefox. Il peut être contourné (changement d'horloge, réinstallation) : la limite qui fera foi sera celle du relais Cloudflare, par compte Trello (phase 2), avec la même valeur.
+- **Coût estimé d'une analyse** : prompt ≤ 10 000 caractères de page (≈ 2 500 à 3 000 tokens) + consigne (≈ 150 tokens) + réponse (`max_tokens` 600, en pratique ≈ 100 à 300) ≈ **3 200 tokens au maximum**. À confirmer avec le champ `usage.total_tokens` des réponses Groq (#11).
+- **Capacité calculée** : `capacité/jour = min(requêtes_par_jour, tokens_par_jour ÷ 3 200)` et `nombre d'utilisateurs à pleine limite = capacité ÷ 40`. **Les limites gratuites de Groq n'ont pas encore été relevées** (console Groq inaccessible depuis l'environnement de travail le 18/11/2026) : la capacité chiffrée sera ajoutée ici avec le ticket #11.

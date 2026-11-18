@@ -1,6 +1,41 @@
 const $ = (id) => document.getElementById(id);
 let boards = [];
 let trello = null;
+let quotaTimer = null;
+let busy = false;
+
+async function quotaStatus() {
+  const { [Quota.STORAGE_KEY]: usage } = await browser.storage.local.get(Quota.STORAGE_KEY);
+  return Quota.status(usage, Date.now());
+}
+
+// Affiche le compteur du jour ; si la limite est atteinte, bloque le bouton et affiche
+// le temps restant avant la réinitialisation (rafraîchi toutes les 20 s).
+async function renderQuota() {
+  const st = await quotaStatus();
+  const el = $("quota");
+  clearTimeout(quotaTimer);
+  if (st.blocked) {
+    el.className = "err";
+    el.textContent = Quota.blockedMessage(st, Date.now());
+    $("add").disabled = true;
+    quotaTimer = setTimeout(renderQuota, Math.min(20000, Math.max(1000, st.resetAt - Date.now())));
+  } else {
+    el.className = "";
+    el.textContent = `${st.remaining} offre${st.remaining > 1 ? "s" : ""} restante${st.remaining > 1 ? "s" : ""} aujourd'hui sur ${st.limit}.`;
+    $("add").disabled = busy;
+  }
+  return st;
+}
+
+// Réserve une analyse dans le quota du jour ; renvoie false si la limite est atteinte.
+async function consumeQuota() {
+  const now = Date.now();
+  const { [Quota.STORAGE_KEY]: usage } = await browser.storage.local.get(Quota.STORAGE_KEY);
+  if (Quota.status(usage, now).blocked) return false;
+  await browser.storage.local.set({ [Quota.STORAGE_KEY]: Quota.consume(usage, now) });
+  return true;
+}
 
 function setStatus(text, cls = "") {
   const el = $("status");
@@ -84,6 +119,8 @@ async function extractInfo(page, labelNames, jp) {
 }
 
 async function add() {
+  if (busy) return;
+  busy = true;
   $("add").disabled = true;
   setStatus("Création de la carte…");
   try {
@@ -94,6 +131,12 @@ async function add() {
 
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     const page = await readPage(tab.id);
+    // Chaque offre analysée compte, même si aucune carte n'est créée ensuite :
+    // c'est l'analyse qui consomme le quota Groq partagé.
+    if (!(await consumeQuota())) {
+      setStatus("");
+      return;
+    }
     const jp = Core.parseJobPosting(page.ldjson);
     const byName = await trello.boardLabels(board);
     const raw = await extractInfo(page, Object.keys(byName), jp);
@@ -109,7 +152,8 @@ async function add() {
   } catch (e) {
     await fail(e);
   } finally {
-    $("add").disabled = false;
+    busy = false;
+    await renderQuota();
   }
 }
 
@@ -144,8 +188,9 @@ async function init() {
     }
     $("auto").checked = !!saved.auto;
     setStatus("");
+    const st = await renderQuota();
 
-    if (saved.auto && target.list) add();
+    if (saved.auto && target.list && !st.blocked) add();
   } catch (e) {
     await fail(e);
   }

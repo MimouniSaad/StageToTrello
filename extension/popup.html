@@ -10,6 +10,8 @@
     select, button { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
     button { margin-top: 12px; cursor: pointer; }
     #status { margin-top: 10px; min-height: 1.2em; word-break: break-word; }
+    #quota { margin-top: 6px; font-size: 12px; opacity: .8; }
+    #quota.err { opacity: 1; }
     #logout { display: block; margin-top: 10px; text-align: right; font-size: 12px; }
     .ok { color: #2e7d32; }
     .err { color: #c62828; }
@@ -28,6 +30,7 @@
     <select id="list"></select>
     <label class="auto"><input type="checkbox" id="auto"> Envoyer dès l'ouverture</label>
     <button id="add">Ajouter à Trello</button>
+    <div id="quota"></div>
     <a href="#" id="logout">Déconnecter</a>
   </section>
   <div id="status"></div>
@@ -35,6 +38,7 @@
   <script src="lib/core.js"></script>
   <script src="lib/groq.js"></script>
   <script src="lib/trello.js"></script>
+  <script src="lib/quota.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
