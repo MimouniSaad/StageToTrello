@@ -140,3 +140,37 @@ test("tokenFromRedirect lit le jeton dans le fragment", () => {
 test("cardName assemble entreprise et poste", () => {
   assert.equal(Core.cardName({ company: "Acme", title: "Dev" }), "Acme - Dev");
 });
+
+// ---------- Étiquettes par mots-clés ----------
+
+const SAAD = ["DevSecOps", "DevOps", "Cloud", "Cybersécurité", "Réseaux", "AI", "Système et Infra",
+              "Développement logiciel", "Testeur", "Support IT", "PowerPlaterforme dev"];
+
+test("keywordLabels : étiquettes d'un tableau existant", () => {
+  assert.deepEqual(Core.keywordLabels(SAAD, "Stagiaire DevOps", "Kubernetes, Terraform sur AWS. CI/CD GitLab."),
+                   ["DevOps", "Cloud"]);
+  assert.deepEqual(Core.keywordLabels(SAAD, "Analyste SOC", "SIEM, détection, ISO 27001"), ["Cybersécurité"]);
+  // « PowerPlaterforme dev » relève du thème Power Platform, pas du développement en général
+  assert.deepEqual(Core.keywordLabels(SAAD, "Consultant Power Platform", "Power Apps et Power Automate"),
+                   ["PowerPlaterforme dev"]);
+  assert.deepEqual(Core.keywordLabels(SAAD, "Développeur Python", "Django, React"), ["Développement logiciel"]);
+});
+
+test("keywordLabels : fonctionne avec d'autres noms d'étiquettes (casse, accents, synonymes)", () => {
+  const other = ["Développeur Web", "Data / BI", "CYBERSECURITY", "Ressources humaines", "Urgent"];
+  assert.deepEqual(Core.keywordLabels(other, "Analyste SOC", "SIEM"), ["CYBERSECURITY"]);
+  assert.deepEqual(Core.keywordLabels(other, "Data analyst", "SQL et Power BI"), ["Data / BI"]);
+  assert.deepEqual(Core.keywordLabels(other, "Chargé de recrutement", "ressources humaines"), ["Ressources humaines"]);
+  assert.deepEqual(Core.keywordLabels(other, "Stagiaire comptable", "bilan"), []);
+});
+
+test("keywordLabels : le nom de l'étiquette lui-même suffit", () => {
+  assert.deepEqual(Core.keywordLabels(["Alternance", "Stage"], "Stage Ingénieur", "En alternance"),
+                   ["Stage", "Alternance"]);   // titre d'abord
+});
+
+test("keywordLabels : au plus 3 étiquettes, celles du titre en premier", () => {
+  const labels = Core.keywordLabels(SAAD, "Ingénieur Cloud", "devops docker linux python selenium support");
+  assert.equal(labels.length, 3);
+  assert.equal(labels[0], "Cloud");
+});

@@ -1,22 +1,71 @@
 // Logique pure : prompt, lecture des réponses, données structurées, mode de secours.
 const Core = (() => {
   const MAX_PROMPT_CHARS = 10000;   // reste sous la limite de tokens par minute de l'offre gratuite Groq
-  const MAX_DESC_CHARS = 16000;     // la limite Trello est de 16 384
+  // Thèmes pour choisir les étiquettes sans IA, quel que soit le tableau de l'utilisateur.
+  // Une étiquette est rattachée au PREMIER thème dont un « nom » apparaît dans son nom
+  // (mot entier, ou début de mot si le nom finit par *), sans tenir compte de la casse ni
+  // des accents : les thèmes vont donc du plus précis au plus général. L'étiquette est choisie
+  // si le titre ou le texte de l'offre contient un mot-clé du thème, ou le nom de l'étiquette.
+  const THEMES = [
+    { names: ["power*"], rx: /power apps|power automate|power platform|power bi|powerapps/ },
+    { names: ["devsecops"], rx: /devsecops|\bsast\b|\bdast\b|securite.{0,20}(ci\/cd|pipeline)/ },
+    { names: ["devops", "ci/cd", "cicd", "sre"],
+      rx: /devops|ci\/cd|jenkins|gitlab|github actions|docker|kubernetes|terraform|ansible|helm|\bsre\b/ },
+    { names: ["cloud", "aws", "azure", "gcp"], rx: /\baws\b|azure|\bgcp\b|google cloud|cloud/ },
+    { names: ["cyber*", "securite", "security", "ssi", "soc", "grc", "pentest"],
+      rx: /cyber|securite|security|pentest|\bsoc\b|siem|owasp|\bgrc\b|iso 27001|\bssi\b/ },
+    { names: ["reseau*", "network", "telecom"],
+      rx: /reseau|network|cisco|routage|vlan|firewall|pare-feu|\bwan\b|\blan\b|telecom/ },
+    { names: ["ai", "ia", "intelligence artificielle", "machine learning", "ml", "deep learning", "llm"],
+      rx: /\bia\b|\bai\b|machine learning|deep learning|\bllm\b|intelligence artificielle|nlp|computer vision/ },
+    { names: ["data", "donnee*", "bi", "analytics", "analyste"],
+      rx: /\bdata\b|donnees|\bsql\b|power bi|tableau|\betl\b|big data|data analyst|data engineer|analytics/ },
+    { names: ["systeme*", "infra*", "sysadmin", "administrateur"],
+      rx: /linux|windows server|virtualisation|vmware|proxmox|active directory|infrastructure|sysadmin|administrateur systeme/ },
+    { names: ["developpement", "developpeur", "dev", "logiciel", "software", "web", "fullstack",
+              "full stack", "backend", "frontend", "mobile"],
+      rx: /developpeur|developpement|developer|python|\bjava\b|javascript|typescript|react|angular|\bnode|backend|frontend|full.?stack|\bc#|\.net|\bphp\b/ },
+    { names: ["test*", "qa", "qualite", "recette"],
+      rx: /testeur|\bqa\b|recette|test logiciel|selenium|cypress|qualite logicielle|tests? automatises/ },
+    { names: ["support", "helpdesk", "assistance", "technicien"],
+      rx: /support|helpdesk|help desk|assistance utilisateur|technicien|\bitsm\b|glpi/ },
+    { names: ["projet*", "project*", "pmo", "scrum", "agile"],
+      rx: /chef de projet|project manager|gestion de projet|\bpmo\b|scrum|agile|product owner/ },
+    { names: ["marketing", "communication", "seo"],
+      rx: /marketing|communication|\bseo\b|social media|reseaux sociaux|growth/ },
+    { names: ["financ*", "comptab*", "audit", "controle de gestion"],
+      rx: /finance|comptab|audit|controle de gestion|tresorerie/ },
+    { names: ["rh", "ressources humaines", "recrutement", "talent"],
+      rx: /\brh\b|ressources humaines|recrutement|talent acquisition|paie/ },
+    { names: ["commercia*", "vente*", "sales", "business"],
+      rx: /commercial|vente|\bsales\b|business develop|account manager/ },
+  ];
 
-  // Mots-clés du mode de secours (sans IA) : adapte les noms à tes étiquettes Trello
-  const KEYWORDS = {
-    "DevSecOps": /devsecops|sast|dast|sécurité.{0,20}(ci\/cd|pipeline)/i,
-    "DevOps": /devops|ci\/cd|jenkins|gitlab|docker|kubernetes|terraform|ansible|helm/i,
-    "Cloud": /\baws\b|azure|gcp|google cloud|cloud/i,
-    "Cybersécurité": /cyber|sécurité|pentest|\bsoc\b|siem|owasp|\bgrc\b|iso 27001/i,
-    "Réseaux": /réseau|cisco|routage|vlan|firewall|\bwan\b|\blan\b/i,
-    "AI": /\bia\b|\bai\b|machine learning|llm|deep learning|intelligence artificielle/i,
-    "Système et Infra": /linux|windows server|virtualisation|vmware|proxmox|active directory|infrastructure|sysadmin/i,
-    "Développement logiciel": /développeur|développement|python|java\b|react|angular|node|backend|frontend|full.?stack/i,
-    "Testeur": /testeur|\bqa\b|recette|test logiciel|selenium|cypress|qualité logicielle/i,
-    "Support IT": /support|helpdesk|help desk|assistance utilisateur|technicien|\bitsm\b|glpi/i,
-    "PowerPlaterforme dev": /power apps|power automate|power platform|power bi/i,
-  };
+  const normalize = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[’']/g, " ");
+  const escapeRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hasWord = (hay, word) => new RegExp(`(^|[^a-z0-9])${escapeRx(word)}($|[^a-z0-9])`).test(hay);
+  const nameMatches = (label, n) => (n.endsWith("*")
+    ? new RegExp(`(^|[^a-z0-9])${escapeRx(n.slice(0, -1))}`).test(label) : hasWord(label, n));
+
+  // Jusqu'à 3 étiquettes du tableau, celles trouvées dans le titre d'abord.
+  function keywordLabels(labelNames, title, text) {
+    const t = normalize(title);
+    const body = normalize(text);
+    const scored = labelNames.map((label, index) => {
+      const name = normalize(label).trim();
+      const theme = THEMES.find((th) => th.names.some((n) => nameMatches(name, n)));
+      const tests = theme ? [(s) => theme.rx.test(s)] : [];
+      if (name.length >= 3) tests.push((s) => hasWord(s, name));   // le nom de l'étiquette lui-même
+      const inTitle = tests.some((fn) => fn(t));
+      const inText = tests.some((fn) => fn(body));
+      return { label, index, score: (inTitle ? 2 : 0) + (inText ? 1 : 0) };
+    });
+    return scored.filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .slice(0, 3)
+      .map((x) => x.label);
+  }
 
   function buildPrompt(url, meta, text, labelNames) {
     return `Voici le début d'une page web qui devrait être une offre de stage ou d'emploi.
@@ -75,8 +124,6 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     return typeof city === "string" ? city.trim() : "";
   }
 
-  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
   // Intitulé propre pour « Entreprise - Poste » : retire les mentions H/F, la durée,
   // « (stage de fin d'études) » et la ville connue, puis les séparateurs orphelins.
   function cleanTitle(title, city = "") {
@@ -86,7 +133,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
       .replace(/[([]?\s*\b\d{1,2}\s*mois\b\s*[)\]]?/gi, " ")
       .replace(/[([]\s*stage de fin d['’]études\s*[)\]]/gi, " ");
     if (city) {
-      const c = escapeRe(city);
+      const c = escapeRx(city);
       t = t.replace(new RegExp(`\\(\\s*${c}[^()]*\\)`, "gi"), " ")
            .replace(new RegExp(`\\s*[-–|,]\\s*${c}(?:\\s*\\(?\\d{2,5}\\)?)?\\s*(?=$|[-–|,(])`, "gi"), " ");
     }
@@ -128,9 +175,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     const company = (jp && jp.company) || meta.site || domainName(url);
     const title = (jp && jp.title && cleanTitle(jp.title, jp.city))
       || meta.title.split(/\s[-|–]\s/)[0] || meta.title;
-    const labels = Object.keys(KEYWORDS)
-      .filter((l) => labelNames.includes(l) && KEYWORDS[l].test(`${title} ${text}`))
-      .slice(0, 3);
+    const labels = keywordLabels(labelNames, title, text);
     // Sans IA, seule une offre publiée en données structurées (JobPosting) est fiable :
     // une page longue (liste de résultats, accueil, article) ne suffit pas.
     const found = Boolean(jp && (jp.company || jp.title));
@@ -170,7 +215,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
   }
 
   return {
-    KEYWORDS, MAX_PROMPT_CHARS, MAX_DESC_CHARS, buildPrompt, parseLlm, htmlToText,
+    THEMES, MAX_PROMPT_CHARS, keywordLabels, buildPrompt, parseLlm, htmlToText,
     parseJobPosting, cleanTitle, heuristicExtract, fromJobPosting, hasFullJobPosting,
     finalizeInfo, cardName, authorizeUrl, tokenFromRedirect,
   };
