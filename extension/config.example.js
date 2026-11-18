@@ -1,7 +1,7 @@
-// Copie ce fichier en config.js et remplis-le. config.js n'est jamais commité.
+// Copie ce fichier en config.js et remplis-le. config.js n'est pas commité.
+// Il ne contient aucun secret : la clé Groq reste sur le relais Cloudflare.
 const CONFIG = {
   TRELLO_KEY: "",      // clé publique de l'app Trello (https://trello.com/power-ups/admin)
-  GROQ_API_KEY: "",    // clé Groq (https://console.groq.com/keys), lisible dans le paquet de l'extension
-  GROQ_MODELS: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
+  RELAY_URL: "https://stage-trello-relay.mimsaad03.workers.dev",   // relais d'analyse (dossier relay/)
   DEFAULT_LIST: "Stages",
 };

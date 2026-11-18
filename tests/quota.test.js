@@ -33,10 +33,17 @@ test("status : le compteur d'un autre jour est ignoré", () => {
   assert.equal(st.blocked, false);
 });
 
-test("consume : incrémente le jour courant et repart à 1 un nouveau jour", () => {
-  assert.deepEqual(Quota.consume({ day: "2026-11-18", count: 5 }, NOW), { day: "2026-11-18", count: 6 });
-  assert.deepEqual(Quota.consume({ day: "2026-11-17", count: 40 }, NOW), { day: "2026-11-18", count: 1 });
-  assert.deepEqual(Quota.consume(undefined, NOW), { day: "2026-11-18", count: 1 });
+test("fromServer : recopie le compteur du relais pour le jour de resetAt", () => {
+  const usage = Quota.fromServer({ used: 12, limit: 40, resetAt: Date.UTC(2026, 10, 19) });
+  assert.deepEqual(usage, { day: "2026-11-18", count: 12, limit: 40 });
+  assert.equal(Quota.status(usage, NOW).remaining, 28);
+});
+
+test("status utilise la limite renvoyée par le relais", () => {
+  const usage = Quota.fromServer({ used: 20, limit: 20, resetAt: Date.UTC(2026, 10, 19) });
+  const st = Quota.status(usage, NOW);
+  assert.equal(st.limit, 20);
+  assert.equal(st.blocked, true);
 });
 
 test("formatWait : heures, minutes et moins d'une minute", () => {

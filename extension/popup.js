@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 let boards = [];
 let trello = null;
+let trelloToken = null;
 let quotaTimer = null;
 let busy = false;
 
@@ -28,14 +29,13 @@ async function renderQuota() {
   return st;
 }
 
-// Réserve une analyse dans le quota du jour ; renvoie false si la limite est atteinte.
-async function consumeQuota() {
-  const now = Date.now();
-  const { [Quota.STORAGE_KEY]: usage } = await browser.storage.local.get(Quota.STORAGE_KEY);
-  if (Quota.status(usage, now).blocked) return false;
-  await browser.storage.local.set({ [Quota.STORAGE_KEY]: Quota.consume(usage, now) });
-  return true;
+// Recopie le compteur du relais, qui fait foi (par compte Trello).
+async function syncQuota(usage) {
+  if (usage) await browser.storage.local.set({ [Quota.STORAGE_KEY]: Quota.fromServer(usage) });
 }
+
+// Levée quand le relais refuse l'analyse pour cause de limite quotidienne.
+class QuotaReached extends Error {}
 
 function setStatus(text, cls = "") {
   const el = $("status");
@@ -49,13 +49,14 @@ function show(screen) {
 }
 
 function configError() {
-  return typeof CONFIG === "undefined" || !CONFIG.TRELLO_KEY
-    ? "config.js manquant : voir le README." : null;
+  return typeof CONFIG === "undefined" || !CONFIG.TRELLO_KEY || !CONFIG.RELAY_URL
+    ? "config.js manquant ou incomplet : voir le README." : null;
 }
 
 async function logout(message = "") {
   await browser.storage.local.remove("trelloToken");
   trello = null;
+  trelloToken = null;
   show("login");
   setStatus(message, message ? "err" : "");
 }
@@ -104,16 +105,22 @@ async function readPage(tabId) {
   }
 }
 
+// Analyse par IA via le relais ; mode de secours si le relais est saturé ou injoignable.
 async function extractInfo(page, labelNames, jp) {
-  if (CONFIG.GROQ_API_KEY) {
-    try {
-      return await Groq.llmExtract(page.url, page.meta, page.text, labelNames, {
-        apiKey: CONFIG.GROQ_API_KEY, models: CONFIG.GROQ_MODELS,
-        rounds: 2, maxWaitS: 10,  // le popup se ferme si l'utilisateur clique ailleurs : on bascule vite
-      });
-    } catch (e) {
-      console.warn(`IA indisponible (${e.message}), mode de secours.`);
+  try {
+    const res = await Relay.extract(page, labelNames,
+                                    { relayUrl: CONFIG.RELAY_URL, token: trelloToken });
+    await syncQuota(res.usage);
+    return res;
+  } catch (e) {
+    if (e instanceof Relay.RelayError) {
+      if (e.status === 401) throw new TrelloApi.TrelloError(e.message, 401);
+      if (e.code === "daily_limit") {
+        await syncQuota(Relay.usageOf(e.data));
+        throw new QuotaReached(e.message);
+      }
     }
+    console.warn(`Analyse indisponible (${e.message}), mode de secours.`);
   }
   return Core.heuristicExtract(page.url, page.meta, page.text, jp, labelNames);
 }
@@ -129,14 +136,12 @@ async function add() {
     if (!board || !list) throw new Error("Choisis un tableau et une liste.");
     await browser.storage.local.set({ target: { board, list }, auto: $("auto").checked });
 
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    const page = await readPage(tab.id);
-    // Chaque offre analysée compte, même si aucune carte n'est créée ensuite :
-    // c'est l'analyse qui consomme le quota Groq partagé.
-    if (!(await consumeQuota())) {
+    if ((await quotaStatus()).blocked) {  // limite déjà connue : pas de requête inutile
       setStatus("");
       return;
     }
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const page = await readPage(tab.id);
     const jp = Core.parseJobPosting(page.ldjson);
     const byName = await trello.boardLabels(board);
     const raw = await extractInfo(page, Object.keys(byName), jp);
@@ -150,7 +155,8 @@ async function add() {
     });
     setStatus(`✓ ${name}`, "ok");
   } catch (e) {
-    await fail(e);
+    if (e instanceof QuotaReached) setStatus("");  // le message de limite s'affiche sous le bouton
+    else await fail(e);
   } finally {
     busy = false;
     await renderQuota();
@@ -163,7 +169,7 @@ async function init() {
     show("login");
     return setStatus(`✗ ${err}`, "err");
   }
-  const { trelloToken } = await browser.storage.local.get("trelloToken");
+  ({ trelloToken } = await browser.storage.local.get("trelloToken"));
   if (!trelloToken) {
     show("login");
     return setStatus("");
