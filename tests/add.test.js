@@ -95,12 +95,25 @@ test("limite renvoyée par le relais : pas de carte, compteur recopié", async (
   assert.equal(b.store.usage.count, 40);
 });
 
-test("relais saturé : mode de secours", async () => {
-  const b = makeBrowser();
+test("relais saturé, page sans JobPosting : aucune carte, message explicite", async () => {
   const f = makeFetch({ relay: () => [503, { ok: false, code: "groq_busy", error: "Saturé" }] });
+  const r = await run(makeBrowser(), f);
+  assert.deepEqual(r, { ok: false, code: "error",
+    error: "Analyse indisponible et offre non détectée automatiquement, réessaie plus tard." });
+  assert.equal(f.calls.cards.length, 0);
+});
+
+test("relais injoignable, page avec JobPosting : carte créée en mode de secours", async () => {
+  const b = makeBrowser();
+  const ld = JSON.stringify({ "@type": "JobPosting", title: "Stagiaire DevOps",
+    hiringOrganization: { name: "Capgemini" }, description: "<p>Missions DevOps…</p>" });
+  b.browser.tabs.executeScript = async (id, { file }) =>
+    (file === "lib/page.js" ? [{ ...PAGE, ldjson: [ld] }] : []);
+  const f = makeFetch({ relay: () => { throw new TypeError("NetworkError"); } });
   const r = await run(b, f);
   assert.equal(r.ok, true);
-  assert.equal(r.name, "Exemple - Stage DevOps");
+  assert.equal(r.name, "Capgemini - Stagiaire DevOps");
+  assert.equal(f.calls.cards[0].idLabels, "lab1");   // « DevOps » trouvé par mots-clés
 });
 
 test("jeton refusé par le relais ou par Trello : jeton effacé", async () => {

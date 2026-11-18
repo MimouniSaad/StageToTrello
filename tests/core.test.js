@@ -47,6 +47,20 @@ test("heuristicExtract devine entreprise, titre et étiquettes", () => {
   assert.ok(r.labels.includes("DevOps"));
   assert.ok(r.labels.includes("Développement logiciel"));
   assert.equal(r.found, false);
+  assert.equal(r.fallback, true);
+});
+
+test("heuristicExtract : une page longue sans JobPosting n'est pas une offre", () => {
+  const r = Core.heuristicExtract("https://exemple.fr/offres", { title: "Nos offres", site: "Exemple" },
+                                  "Liste de 50 offres d'emploi… ".repeat(100), null, []);
+  assert.equal(r.found, false);
+});
+
+test("heuristicExtract : JobPosting avec entreprise ou intitulé = offre", () => {
+  const meta = { title: "Page", site: "" };
+  assert.equal(Core.heuristicExtract("https://a.fr", meta, "", { company: "Acme", title: "", desc: "" }, []).found, true);
+  assert.equal(Core.heuristicExtract("https://a.fr", meta, "", { company: "", title: "Stagiaire", desc: "" }, []).found, true);
+  assert.equal(Core.heuristicExtract("https://a.fr", meta, "", { company: "", title: "", desc: "x" }, []).found, false);
 });
 
 test("finalizeInfo prend la description JSON-LD au-delà de 300 caractères", () => {

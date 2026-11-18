@@ -150,7 +150,7 @@ Si la page ne contient pas d'offre (page générique, lien expiré, liste de ré
 | Lecture | `lib/page.js` | Injecté dans l'onglet : JSON-LD, `og:title`, `og:site_name`, `<title>`, texte principal via Readability (repli sur le texte visible) |
 | Extraction | `lib/relay.js`, `lib/core.js` | Envoie les 10 000 premiers caractères au relais, qui interroge Groq ; lit 4 lignes : `FOUND`, `COMPANY`, `TITLE`, `LABELS` |
 | Limite | `lib/quota.js` | Copie locale du compteur du relais (`used`, `limit`, `resetAt`) : offres restantes, bouton bloqué et temps d'attente quand la limite est atteinte |
-| Secours | `lib/core.js` | Si le relais est saturé ou injoignable : entreprise et titre depuis le JSON-LD ou les métadonnées, étiquettes par mots-clés (`KEYWORDS`) |
+| Secours | `lib/core.js` | Si le relais est saturé ou injoignable : la carte n'est créée que si la page publie un `JobPosting` JSON-LD (entreprise ou intitulé) ; étiquettes par mots-clés (`KEYWORDS`). Sinon : « Analyse indisponible et offre non détectée automatiquement, réessaie plus tard. » |
 | Description | `lib/core.js` | Description JSON-LD si elle dépasse 300 caractères, sinon texte de la page ; tronquée à 16 000 caractères (limite Trello : 16 384) |
 | Trello | `lib/trello.js` | Tableaux, étiquettes, création de la carte et pièce jointe |
 | Ajout | `background.js`, `lib/add.js` | Le popup envoie `{type: "add", tabId, board, list}` ; l'arrière-plan enchaîne lecture, analyse et création, un seul ajout à la fois, puis affiche le badge et, si le popup est fermé, une notification |
@@ -200,6 +200,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 | `✗ Erreur Trello 4xx : …` | Trello refuse la requête (liste supprimée, droits insuffisants) | Lire le message ; rechoisir le tableau et la liste |
 | « Impossible de lire cette page. » | Page protégée de Firefox | Ouvrir l'offre dans un onglet normal |
 | « Aucune offre trouvée sur cette page. » | Page générique, liste, lien expiré | Ouvrir l'offre elle-même |
+| « Analyse indisponible et offre non détectée automatiquement… » | Relais saturé ou injoignable, et la page ne publie pas de `JobPosting` | Réessayer un peu plus tard |
 | Étiquettes absentes ou peu pertinentes | Relais saturé ou injoignable (mode de secours) ou étiquettes sans nom | Vérifier le relais (`curl …/` doit répondre `{"ok":true}`, logs : `npx wrangler tail`) ; nommer les étiquettes Trello ; aligner `KEYWORDS` |
 | « Limite de 40 offres par jour atteinte » | Limite quotidienne du relais | Attendre l'heure de réinitialisation affichée |
 

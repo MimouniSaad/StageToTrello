@@ -59,7 +59,11 @@ const AddOffer = (() => {
       }
 
       const info = C.finalizeInfo(page.url, page.meta, page.text, jp, raw);
-      if (!info.found) return { ok: false, code: "error", error: "Aucune offre trouvée sur cette page." };
+      if (!info.found) {
+        return { ok: false, code: "error", error: raw.fallback
+          ? "Analyse indisponible et offre non détectée automatiquement, réessaie plus tard."
+          : "Aucune offre trouvée sur cette page." };
+      }
 
       const name = C.cardName(info);
       const card = await trello.createCard({
