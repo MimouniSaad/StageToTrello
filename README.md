@@ -60,6 +60,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 │   ├── config.js             # Configuration (clé publique de l'app Trello, adresse du relais) ; aucun secret
 │   ├── background.js         # Connexion Trello et ajout des offres (badge, notification, un ajout à la fois)
 │   ├── popup.html, popup.js  # Popup : connexion, choix du tableau et de la liste, envoi
+│   ├── THIRD_PARTY_NOTICES.txt  # Licence et mentions de Readability (Apache-2.0), incluses dans le paquet
 │   ├── icons/                # Logo : icon.svg (barre d'outils) + PNG 48/96/128 (AMO, about:addons)
 │   └── lib/
 │       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
@@ -208,4 +209,4 @@ Pour voir les messages techniques (par exemple « Analyse indisponible ») : `ab
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](LICENSE). L'extension inclut Mozilla Readability 0.6.0 (Apache-2.0), non modifié : voir [`extension/THIRD_PARTY_NOTICES.txt`](extension/THIRD_PARTY_NOTICES.txt).
