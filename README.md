@@ -33,13 +33,15 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 ```
  Firefox                                               Services externes
 ┌──────────────────────────────────────┐
-│  Popup                               │   ┌──────────────┐   ┌──────────┐
+│  Popup : tableau, liste, bouton      │
+│                                      │
+│  Arrière-plan                        │   ┌──────────────┐   ┌──────────┐
 │   1. lit la page de l'offre          │──▶│ Relais       │──▶│ API Groq │ entreprise, poste,
 │   2. extrait les informations        │   │ (Cloudflare) │   └──────────┘ étiquettes
 │                                      │   └──────────────┘
 │   3. crée la carte                   │   ┌──────────────┐
 │                                      │──▶│ API Trello   │ tableaux, carte, pièce jointe
-│  Arrière-plan : connexion Trello     │   └──────────────┘
+│   + connexion Trello                 │   └──────────────┘
 └──────────────────────────────────────┘
 ```
 
@@ -47,7 +49,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 2. Sur la page d'une offre, le popup affiche ses tableaux et listes Trello.
 3. Au clic sur **Ajouter à Trello**, l'extension lit la page telle qu'elle est affichée (données `JobPosting` JSON-LD, titre, nom du site, texte principal via Mozilla Readability).
 4. Elle envoie le texte de l'offre au relais avec le jeton Trello de l'utilisateur. Le relais vérifie le jeton, applique la limite quotidienne et demande à Groq l'entreprise, l'intitulé et les étiquettes.
-5. L'extension crée la carte et y joint le lien.
+5. L'extension crée la carte et y joint le lien. Tout se passe dans le script d'arrière-plan : fermer le popup n'interrompt rien, et le résultat s'affiche sur le bouton (badge) et dans une notification.
 
 ## Contenu du dépôt
 
@@ -56,11 +58,12 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 ├── extension/
 │   ├── manifest.json         # Manifeste Firefox (Manifest V2)
 │   ├── config.example.js     # Modèle de configuration (à copier en config.js) ; aucun secret
-│   ├── background.js         # Connexion Trello (flux d'autorisation officiel)
+│   ├── background.js         # Connexion Trello et ajout des offres (badge, notification, un ajout à la fois)
 │   ├── popup.html, popup.js  # Popup : connexion, choix du tableau et de la liste, envoi
 │   ├── icons/                # Logo : icon.svg (barre d'outils) + PNG 48/96/128 (AMO, about:addons)
 │   └── lib/
 │       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
+│       ├── add.js            # Ajout d'une offre : lecture de la page, analyse, création de la carte
 │       ├── relay.js          # Client du relais (analyse par IA, compteur quotidien)
 │       ├── quota.js          # Limite quotidienne : copie locale du compteur du relais, temps d'attente
 │       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
@@ -135,7 +138,7 @@ Pour publier une mise à jour, incrémente `"version"` dans `manifest.json` : Mo
 2. Ouvre le popup et clique sur **Connecter Trello**, puis autorise l'accès dans la fenêtre Trello. Le popup peut se fermer pendant l'autorisation : rouvre-le ensuite.
 3. Ouvre la **page de l'offre elle-même** (pas une liste de résultats), puis le popup (bouton ou `Alt+Shift+S`).
 4. Choisis le tableau et la liste (le choix est mémorisé), puis clique sur **Ajouter à Trello**. Coche « Envoyer dès l'ouverture » pour que les prochaines ouvertures du popup envoient directement l'offre.
-5. Le popup affiche `✓ Entreprise - Poste`, ou `✗` avec le message d'erreur.
+5. Le popup affiche `✓ Entreprise - Poste`, ou `✗` avec le message d'erreur. Tu peux le fermer sans attendre : l'ajout continue, le bouton affiche un badge (`…`, puis `✓` ou `✗`) et une notification donne le résultat. Clique sur la notification pour ouvrir la carte.
 
 Si la page ne contient pas d'offre (page générique, lien expiré, liste de résultats), **aucune carte n'est créée**. Le lien **Déconnecter** efface le jeton Trello de l'extension.
 
@@ -150,6 +153,7 @@ Si la page ne contient pas d'offre (page générique, lien expiré, liste de ré
 | Secours | `lib/core.js` | Si le relais est saturé ou injoignable : entreprise et titre depuis le JSON-LD ou les métadonnées, étiquettes par mots-clés (`KEYWORDS`) |
 | Description | `lib/core.js` | Description JSON-LD si elle dépasse 300 caractères, sinon texte de la page ; tronquée à 16 000 caractères (limite Trello : 16 384) |
 | Trello | `lib/trello.js` | Tableaux, étiquettes, création de la carte et pièce jointe |
+| Ajout | `background.js`, `lib/add.js` | Le popup envoie `{type: "add", tabId, board, list}` ; l'arrière-plan enchaîne lecture, analyse et création, un seul ajout à la fois, puis affiche le badge et, si le popup est fermé, une notification |
 
 Points notables :
 
@@ -157,7 +161,7 @@ Points notables :
 - **Réponses du relais** : `401` → jeton effacé et retour à **Connecter Trello** ; `429` (limite du jour) → aucune carte, message de limite avec le temps d'attente ; `503`, `502` ou relais injoignable (délai de 25 s) → mode de secours. Le relais essaie lui-même les modèles Groq tour à tour.
 - **Authentification Trello** : clé et jeton dans l'en-tête `Authorization: OAuth oauth_consumer_key="…", oauth_token="…"`, jamais dans l'URL. Si Trello répond 401 (jeton révoqué), l'extension efface le jeton et réaffiche **Connecter Trello**.
 - **Étiquettes** : 1 à 3 par offre, uniquement parmi les étiquettes nommées du tableau choisi. `KEYWORDS` (mode de secours) doit utiliser les mêmes noms.
-- **Connexion en arrière-plan** : Firefox ferme le popup quand la fenêtre d'autorisation prend le focus ; le flux tourne donc dans `background.js`.
+- **Connexion et ajout en arrière-plan** : Firefox ferme le popup dès qu'il perd le focus ; la connexion Trello et l'ajout des offres tournent donc dans `background.js`, gardé éveillé pendant le traitement. Un popup rouvert pendant un ajout affiche « Création de la carte… » puis le résultat.
 
 ## Tests
 
@@ -174,7 +178,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 - **Clé Groq** : elle n'est **pas** dans l'extension. Elle est enregistrée comme secret du relais Cloudflare (`wrangler secret put GROQ_API_KEY`) et ne doit **jamais** apparaître dans le dépôt Git. En cas de fuite, régénère-la sur la console Groq puis remplace le secret, sans mise à jour de l'extension.
 - **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
 - **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde qu'un compteur quotidien lié à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
-- **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
+- **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
 
 ## Limites connues
 
