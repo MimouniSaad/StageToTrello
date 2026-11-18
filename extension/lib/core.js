@@ -98,7 +98,10 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     const labels = Object.keys(KEYWORDS)
       .filter((l) => labelNames.includes(l) && KEYWORDS[l].test(`${title} ${text}`))
       .slice(0, 3);
-    return { found: Boolean(jp) || text.length > 500, company, title, labels };
+    // Sans IA, seule une offre publiée en données structurées (JobPosting) est fiable :
+    // une page longue (liste de résultats, accueil, article) ne suffit pas.
+    const found = Boolean(jp && (jp.company || jp.title));
+    return { found, company, title, labels, fallback: true };
   }
 
   function finalizeInfo(url, meta, text, jp, info) {
