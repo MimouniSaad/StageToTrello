@@ -5,7 +5,7 @@
   "description": "Envoie l'offre ouverte vers ton tableau Trello en un clic",
   "browser_specific_settings": {
     "gecko": {
-      "id": "stage-trello-saad@local",
+      "id": "stage-trello@mimounisaad",
       "strict_min_version": "140.0",
       "data_collection_permissions": { "required": ["websiteContent"] }
     }
