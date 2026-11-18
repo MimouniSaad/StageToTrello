@@ -4,6 +4,5 @@ __pycache__/
 *.xpi
 *.zip
 web-ext-artifacts/
-extension/config.js
 node_modules/
 .idea/

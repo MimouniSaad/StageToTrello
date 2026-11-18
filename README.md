@@ -57,7 +57,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 .
 ├── extension/
 │   ├── manifest.json         # Manifeste Firefox (Manifest V2)
-│   ├── config.example.js     # Modèle de configuration (à copier en config.js) ; aucun secret
+│   ├── config.js             # Configuration (clé publique de l'app Trello, adresse du relais) ; aucun secret
 │   ├── background.js         # Connexion Trello et ajout des offres (badge, notification, un ajout à la fois)
 │   ├── popup.html, popup.js  # Popup : connexion, choix du tableau et de la liste, envoi
 │   ├── icons/                # Logo : icon.svg (barre d'outils) + PNG 48/96/128 (AMO, about:addons)
@@ -87,11 +87,7 @@ Ces étapes ne sont à faire qu'une fois, par la personne qui publie l'extension
 
 ### 2. Configurer l'extension
 
-```bash
-cp extension/config.example.js extension/config.js
-```
-
-Remplis `extension/config.js` :
+`extension/config.js` est commité avec les valeurs de l'extension publiée. Pour pointer vers ta propre app Trello ou ton propre relais (fork), modifie-le :
 
 | Champ | Description |
 |---|---|
@@ -99,7 +95,7 @@ Remplis `extension/config.js` :
 | `RELAY_URL` | Adresse du relais déployé (`https://stage-trello-relay.mimsaad03.workers.dev`, voir `relay/README.md`) |
 | `DEFAULT_LIST` | Nom de la liste présélectionnée au premier usage (défaut : `Stages`) |
 
-`config.js` ne contient aucun secret (la clé Trello est publique, la clé Groq reste sur le relais). Il est dans `.gitignore` pour que chacun puisse pointer vers sa propre app Trello et son propre relais.
+`config.js` ne contient aucun secret (la clé Trello est publique, la clé Groq reste sur le relais). La `TRELLO_KEY` identifie l'application, pas un utilisateur : elle est la même pour tous et peut être publique. Ne confonds pas avec le *Secret* OAuth de la page d'admin Trello, qui ne doit jamais être publié (l'extension ne l'utilise pas).
 
 ### 3. Autoriser l'URL de redirection dans Trello
 
@@ -198,7 +194,7 @@ Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de 
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
-| `✗ config.js manquant ou incomplet` | `extension/config.js` absent, ou `TRELLO_KEY` / `RELAY_URL` vide | Copier `config.example.js` en `config.js` et le remplir |
+| `✗ config.js manquant ou incomplet` | `extension/config.js` absent, ou `TRELLO_KEY` / `RELAY_URL` vide | Restaurer `extension/config.js` depuis le dépôt (`git checkout extension/config.js`) |
 | « Connexion Trello annulée. » sans avoir annulé | URL de redirection absente des « Allowed origins » de l'app Trello | Refaire l'étape 3 de la mise en place |
 | « Session Trello expirée, reconnecte-toi. » | Jeton révoqué ou invalide (401) | Cliquer sur **Connecter Trello** |
 | `✗ Erreur Trello 4xx : …` | Trello refuse la requête (liste supprimée, droits insuffisants) | Lire le message ; rechoisir le tableau et la liste |
