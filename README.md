@@ -137,7 +137,7 @@ Les installations permanentes passent par la version publiée sur AMO (voir ci-d
 
 ## Publier une nouvelle version
 
-Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`.
+Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
 
 1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
 2. **Version** (SemVer `MAJEUR.MINEUR.CORRECTIF`) :
