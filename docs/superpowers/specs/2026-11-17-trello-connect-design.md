@@ -48,12 +48,12 @@ Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Le
 
 | Sujet | Décision | Ticket |
 |---|---|---|
-| ID de l'extension | _à définir_ | #2 |
+| ID de l'extension | **`stage-trello@mimounisaad`** (disponibilité sur AMO à confirmer au premier envoi) | #2 |
 | Nom public | **StageToTrello** (nom vérifié unique sur AMO) | #3 |
 | Résumé AMO et description du manifeste | « Ajoute l’offre de stage ou d’emploi ouverte à ton tableau Trello en un clic : titre « Entreprise - Poste », description complète, lien et étiquettes choisies automatiquement. » | #3 |
 | Langue | **Français uniquement** pour la v3 : interface, messages et fiche AMO en français. L'anglais (`_locales`) est reporté. | #4 |
 | Support | **Issues GitHub** : https://github.com/MimouniSaad/StageToTrello/issues, avec le modèle `.github/ISSUE_TEMPLATE/bug.yml` | #7 |
-| Modèles Groq | _à définir après la mesure des limites_ | #6, #11 |
+| Modèles Groq | _à définir_ : proposition `gpt-oss-20b` en principal, `gpt-oss-120b` en secours, sous réserve de la qualité des réponses | #6 |
 | Limite par utilisateur | **40 offres analysées par jour** (voir ci-dessous) | #5 |
 
 ### Limite d'utilisation (#5) — relevé du 18/11/2026
@@ -61,5 +61,32 @@ Supprimer le serveur Python local : l'extension Firefox fait tout elle-même. Le
 - **Limite** : 40 offres analysées par jour. Chaque analyse compte, même si aucune carte n'est créée (page qui n'est pas une offre, erreur Trello) : c'est l'analyse qui consomme le quota Groq partagé.
 - **Réinitialisation** : chaque jour à minuit UTC (01:00 en heure d'hiver française, 02:00 en heure d'été), comme le futur relais. Une fois la limite atteinte, le bouton est bloqué et le popup affiche le temps restant et l'heure locale de réinitialisation, rafraîchis toutes les 20 s.
 - **Mise en œuvre actuelle** : compteur dans `storage.local` (`lib/quota.js`), donc par profil Firefox. Il peut être contourné (changement d'horloge, réinstallation) : la limite qui fera foi sera celle du relais Cloudflare, par compte Trello (phase 2), avec la même valeur.
-- **Coût estimé d'une analyse** : prompt ≤ 10 000 caractères de page (≈ 2 500 à 3 000 tokens) + consigne (≈ 150 tokens) + réponse (`max_tokens` 600, en pratique ≈ 100 à 300) ≈ **3 200 tokens au maximum**. À confirmer avec le champ `usage.total_tokens` des réponses Groq (#11).
-- **Capacité calculée** : `capacité/jour = min(requêtes_par_jour, tokens_par_jour ÷ 3 200)` et `nombre d'utilisateurs à pleine limite = capacité ÷ 40`. **Les limites gratuites de Groq n'ont pas encore été relevées** (console Groq inaccessible depuis l'environnement de travail le 18/11/2026) : la capacité chiffrée sera ajoutée ici avec le ticket #11.
+- **Coût mesuré d'une analyse** (relevé du 18/11/2026, 11 requêtes) : 12 000 tokens en entrée et 1 200 en sortie, soit **≈ 1 200 tokens par requête** en moyenne (≈ 1 090 en entrée, ≈ 110 en sortie). C'est bien en dessous du maximum, probablement parce que le texte extrait par Readability est en général nettement plus court que la limite de 10 000 caractères. **Pire cas** (page coupée à 10 000 caractères) : ≈ 3 200 tokens. Réserve : une analyse qui passe au modèle suivant compte pour plusieurs requêtes, le coût réel par analyse peut donc être légèrement supérieur.
+
+### Limites Groq (#11) — offre Free, relevé du 18/11/2026
+
+| Modèle | Requêtes/min | Requêtes/jour | Tokens/min | Tokens/jour |
+|---|---|---|---|---|
+| `openai/gpt-oss-20b` | 30 | 1 000 | 8 000 | 200 000 |
+| `openai/gpt-oss-120b` | 30 | 1 000 | 8 000 | 200 000 |
+| `qwen/qwen3.8-27b` (secours possible, qualité non testée) | 30 | 1 000 | 8 000 | 200 000 |
+
+Les quotas sont comptés séparément pour chaque modèle. Ce sont les **tokens** qui limitent, pas le nombre de requêtes.
+
+### Capacité calculée (offre Free)
+
+Formules : `analyses/jour = min(requêtes/jour, tokens/jour ÷ coût)` et `analyses/min = tokens/min ÷ coût`.
+
+| | Par modèle | 2 modèles (principal + secours) |
+|---|---|---|
+| Analyses par jour (coût moyen 1 200) | ≈ 166 | **≈ 330** |
+| Analyses par minute (coût moyen 1 200) | ≈ 6 | **≈ 13** |
+| Analyses par jour (pire cas 3 200) | ≈ 62 | ≈ 125 |
+| Utilisateurs à 40 offres/jour | — | ≈ 8 |
+| Utilisateurs actifs à ≈ 8 offres/jour (usage réaliste) | — | **≈ 40** |
+
+Conséquences :
+- La limite de **40 offres par jour et par utilisateur** est conservée : elle protège contre les abus sans gêner un usage normal.
+- Le relais (phase 2) aura un **plafond global d'environ 300 analyses par jour** : au-delà, tous les utilisateurs passent en mode simple au lieu d'enchaîner les erreurs 429.
+- Optimisation gratuite à prévoir : ne pas appeler Groq quand la page contient un `JobPosting` JSON-LD (entreprise, poste et description déjà connus).
+- Au-delà d'environ 40 utilisateurs actifs par jour : passer à l'offre payante de Groq, avec un plafond de dépenses.
