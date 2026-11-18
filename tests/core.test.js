@@ -29,7 +29,48 @@ test("parseJobPosting lit @graph, @type liste et convertit la description", () =
     '{"@graph":[{"@type":["JobPosting"],"title":"Dev","hiringOrganization":{"name":"Acme"},"description":"<p>A &amp; B</p><ul><li>x</li></ul>"}]}',
     "pas du json",
   ]);
-  assert.deepEqual(jp, { company: "Acme", title: "Dev", desc: "A & B\nx" });
+  assert.deepEqual(jp, { company: "Acme", title: "Dev", desc: "A & B\nx", city: "" });
+});
+
+test("parseJobPosting lit la ville (jobLocation objet ou liste)", () => {
+  const one = '{"@type":"JobPosting","title":"T","jobLocation":{"address":{"addressLocality":"Lyon"}}}';
+  const list = '{"@type":"JobPosting","title":"T","jobLocation":[{"address":{"addressLocality":" Paris "}}]}';
+  assert.equal(Core.parseJobPosting([one]).city, "Lyon");
+  assert.equal(Core.parseJobPosting([list]).city, "Paris");
+});
+
+test("cleanTitle retire H/F, durée, fin d'études et ville connue", () => {
+  const cases = [
+    ["Stagiaire DevOps H/F", "", "Stagiaire DevOps"],
+    ["Ingénieur GRC (H/F) - Paris", "Paris", "Ingénieur GRC"],
+    ["Stage - Développeur Full-Stack (6 mois) - Lyon 69003", "Lyon", "Stage - Développeur Full-Stack"],
+    ["Data Analyst F/H/X | Nantes", "Nantes", "Data Analyst"],
+    ["Stage Cybersécurité (stage de fin d’études)", "", "Stage Cybersécurité"],
+    ["Consultant SAP (Paris La Défense)", "Paris La Défense", "Consultant SAP"],
+    ["Software Engineer (m/w/d)", "", "Software Engineer"],
+    ["Ingénieur Cloud AWS - Toulouse (31)", "Toulouse", "Ingénieur Cloud AWS"],
+  ];
+  for (const [title, city, expected] of cases) assert.equal(Core.cleanTitle(title, city), expected, title);
+});
+
+test("cleanTitle ne casse pas les intitulés normaux", () => {
+  assert.equal(Core.cleanTitle("CI/CD Engineer"), "CI/CD Engineer");
+  assert.equal(Core.cleanTitle("Stage Paris Data", "Paris"), "Stage Paris Data");   // ville sans séparateur
+  assert.equal(Core.cleanTitle("H/F"), "H/F");   // rien ne reste : on garde l'original
+});
+
+test("fromJobPosting : offre reconnue sans IA, intitulé nettoyé", () => {
+  const jp = { company: "Capgemini", title: "Stagiaire DevOps H/F - Paris", desc: "", city: "Paris" };
+  const r = Core.fromJobPosting("https://a.fr", { title: "", site: "" }, "docker kubernetes", jp, ["DevOps"]);
+  assert.equal(r.found, true);
+  assert.equal(r.fallback, false);
+  assert.equal(r.source, "jobposting");
+  assert.equal(r.company, "Capgemini");
+  assert.equal(r.title, "Stagiaire DevOps");
+  assert.deepEqual(r.labels, ["DevOps"]);
+  assert.equal(Core.hasFullJobPosting(jp), true);
+  assert.equal(Core.hasFullJobPosting({ ...jp, company: "" }), false);
+  assert.equal(Core.hasFullJobPosting(null), false);
 });
 
 test("parseJobPosting ignore les autres types", () => {

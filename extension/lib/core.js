@@ -67,6 +67,37 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     return t === "JobPosting" || (Array.isArray(t) && t.includes("JobPosting"));
   }
 
+  // Ville du premier lieu de travail (jobLocation peut être un objet ou une liste).
+  function jobCity(loc) {
+    const first = Array.isArray(loc) ? loc[0] : loc;
+    const addr = first && typeof first === "object" ? first.address : null;
+    const city = addr && typeof addr === "object" ? addr.addressLocality : "";
+    return typeof city === "string" ? city.trim() : "";
+  }
+
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Intitulé propre pour « Entreprise - Poste » : retire les mentions H/F, la durée,
+  // « (stage de fin d'études) » et la ville connue, puis les séparateurs orphelins.
+  function cleanTitle(title, city = "") {
+    const original = String(title || "").trim();
+    let t = original
+      .replace(/[([]?\s*(?<![\p{L}])[hfmw]\s*\/\s*[hfmw](?:\s*\/\s*(?:x|d|nb|n))?(?![\p{L}])\s*[)\]]?/giu, " ")
+      .replace(/[([]?\s*\b\d{1,2}\s*mois\b\s*[)\]]?/gi, " ")
+      .replace(/[([]\s*stage de fin d['’]études\s*[)\]]/gi, " ");
+    if (city) {
+      const c = escapeRe(city);
+      t = t.replace(new RegExp(`\\(\\s*${c}[^()]*\\)`, "gi"), " ")
+           .replace(new RegExp(`\\s*[-–|,]\\s*${c}(?:\\s*\\(?\\d{2,5}\\)?)?\\s*(?=$|[-–|,(])`, "gi"), " ");
+    }
+    t = t.replace(/\(\s*\)|\[\s*\]/g, " ")
+         .replace(/\s*([-–|])\s*(?:[-–|]\s*)+/g, " $1 ")
+         .replace(/\s+/g, " ")
+         .replace(/^[\s\-–|,:]+|[\s\-–|,:]+$/g, "")
+         .trim();
+    return t || original;
+  }
+
   function parseJobPosting(jsonTexts) {
     for (const raw of jsonTexts) {
       let data;
@@ -81,6 +112,7 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
           company: String(company).trim(),
           title: String(it.title || "").trim(),
           desc: htmlToText(String(it.description || "")),
+          city: jobCity(it.jobLocation),
         };
       }
     }
@@ -94,7 +126,8 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
 
   function heuristicExtract(url, meta, text, jp, labelNames) {
     const company = (jp && jp.company) || meta.site || domainName(url);
-    const title = (jp && jp.title) || meta.title.split(/\s[-|–]\s/)[0] || meta.title;
+    const title = (jp && jp.title && cleanTitle(jp.title, jp.city))
+      || meta.title.split(/\s[-|–]\s/)[0] || meta.title;
     const labels = Object.keys(KEYWORDS)
       .filter((l) => labelNames.includes(l) && KEYWORDS[l].test(`${title} ${text}`))
       .slice(0, 3);
@@ -103,6 +136,14 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     const found = Boolean(jp && (jp.company || jp.title));
     return { found, company, title, labels, fallback: true };
   }
+
+  // Page avec un JobPosting complet (entreprise et intitulé) : pas besoin de l'IA.
+  // Les étiquettes sont choisies par mots-clés ; ces ajouts ne consomment pas de quota.
+  function fromJobPosting(url, meta, text, jp, labelNames) {
+    return { ...heuristicExtract(url, meta, text, jp, labelNames), fallback: false, source: "jobposting" };
+  }
+
+  const hasFullJobPosting = (jp) => Boolean(jp && jp.company && jp.title);
 
   function finalizeInfo(url, meta, text, jp, info) {
     return {
@@ -130,7 +171,8 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
 
   return {
     KEYWORDS, MAX_PROMPT_CHARS, MAX_DESC_CHARS, buildPrompt, parseLlm, htmlToText,
-    parseJobPosting, heuristicExtract, finalizeInfo, cardName, authorizeUrl, tokenFromRedirect,
+    parseJobPosting, cleanTitle, heuristicExtract, fromJobPosting, hasFullJobPosting,
+    finalizeInfo, cardName, authorizeUrl, tokenFromRedirect,
   };
 })();
 

@@ -103,17 +103,31 @@ test("relais saturé, page sans JobPosting : aucune carte, message explicite", a
   assert.equal(f.calls.cards.length, 0);
 });
 
-test("relais injoignable, page avec JobPosting : carte créée en mode de secours", async () => {
-  const b = makeBrowser();
-  const ld = JSON.stringify({ "@type": "JobPosting", title: "Stagiaire DevOps",
-    hiringOrganization: { name: "Capgemini" }, description: "<p>Missions DevOps…</p>" });
+test("page avec JobPosting complet : carte créée sans appel au relais ni quota consommé", async () => {
+  const b = makeBrowser({ usage: Quota.fromServer({ used: 10, limit: 40, resetAt: RESET }) });
+  const ld = JSON.stringify({ "@type": "JobPosting", title: "Stagiaire DevOps (H/F) - Lyon",
+    hiringOrganization: { name: "Capgemini" }, description: "<p>Missions DevOps…</p>",
+    jobLocation: { address: { addressLocality: "Lyon" } } });
   b.browser.tabs.executeScript = async (id, { file }) =>
     (file === "lib/page.js" ? [{ ...PAGE, ldjson: [ld] }] : []);
-  const f = makeFetch({ relay: () => { throw new TypeError("NetworkError"); } });
+  const f = makeFetch({ relay: () => { throw new Error("le relais ne doit pas être appelé"); } });
   const r = await run(b, f);
   assert.equal(r.ok, true);
   assert.equal(r.name, "Capgemini - Stagiaire DevOps");
+  assert.equal(f.calls.relay, 0);
   assert.equal(f.calls.cards[0].idLabels, "lab1");   // « DevOps » trouvé par mots-clés
+  assert.equal(b.store.usage.count, 10);
+});
+
+test("JobPosting sans entreprise : l'IA est appelée", async () => {
+  const b = makeBrowser();
+  const ld = JSON.stringify({ "@type": "JobPosting", title: "Stagiaire DevOps" });
+  b.browser.tabs.executeScript = async (id, { file }) =>
+    (file === "lib/page.js" ? [{ ...PAGE, ldjson: [ld] }] : []);
+  const f = makeFetch({ relay: ok("FOUND: yes\nCOMPANY: Capgemini\nTITLE: Stagiaire DevOps\nLABELS: DevOps") });
+  const r = await run(b, f);
+  assert.equal(r.ok, true);
+  assert.equal(f.calls.relay, 1);
 });
 
 test("jeton refusé par le relais ou par Trello : jeton effacé", async () => {
