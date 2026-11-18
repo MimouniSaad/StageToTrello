@@ -1,5 +1,7 @@
 # StageToTrello
 
+[![CI](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml)
+
 Extension Firefox qui transforme une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**. Rien à installer en dehors de Firefox : l'utilisateur clique sur **Connecter Trello**, autorise l'accès, et c'est prêt.
 
 Chaque carte contient :
