@@ -11,6 +11,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 - Protection des branches `main` et `develop` par un ruleset ; `main` n'accepte que des PR venant de `develop` (#54).
 - Numérotation SemVer, ce journal des modifications et vérification de la cohérence des versions en CI (#57).
 
+### Modifié
+- Nouveau design du popup, plus apaisant : palette douce, mode sombre dédié, compteur avec barre de progression, bandeau d'état avec icône, focus visible au clavier (#61).
+
 ## [3.0.0] - 2026-11-18
 
 Première version publique, sur addons.mozilla.org.
