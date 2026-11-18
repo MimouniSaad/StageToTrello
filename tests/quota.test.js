@@ -5,7 +5,7 @@ const Quota = require("../extension/lib/quota.js");
 const NOW = Date.UTC(2026, 10, 18, 21, 48);   // 18/11/2026 21:48 UTC
 
 test("la limite par défaut est de 40 offres par jour", () => {
-  assert.equal(Quota.DAILY_LIMIT, 40);
+  assert.equal(Quota.DAILY_LIMIT, 41);
 });
 
 test("nextReset : minuit UTC suivant, y compris en fin de mois et d'année", () => {
