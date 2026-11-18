@@ -14,7 +14,7 @@ DAILY_LIMIT = "40"
 # Crée-le avec : npx wrangler kv namespace create USAGE   puis colle l'id ci-dessous.
 [[kv_namespaces]]
 binding = "USAGE"
-id = "A_REMPLIR"
+id = "8ce16fbf28e64ce1b4b7bac7659da279"
 
 # Secrets (jamais dans ce fichier) :
 #   npx wrangler secret put GROQ_API_KEY
