@@ -3,7 +3,7 @@
   "name": "StageToTrello",
   "version": "2.0",
   "description": "Ajoute l’offre de stage ou d’emploi ouverte à ton tableau Trello en un clic : titre « Entreprise - Poste », description complète, lien et étiquettes choisies automatiquement.",
-  "homepage_url": "https://github.com/MimouniSaad/StageTrello",
+  "homepage_url": "https://github.com/MimouniSaad/StageToTrello",
   "browser_specific_settings": {
     "gecko": {
       "id": "stage-trello@mimounisaad",
