@@ -90,3 +90,7 @@ Conséquences :
 - Le relais (phase 2) aura un **plafond global d'environ 300 analyses par jour** : au-delà, tous les utilisateurs passent en mode simple au lieu d'enchaîner les erreurs 429.
 - Optimisation gratuite à prévoir : ne pas appeler Groq quand la page contient un `JobPosting` JSON-LD (entreprise, poste et description déjà connus).
 - Au-delà d'environ 40 utilisateurs actifs par jour : passer à l'offre payante de Groq, avec un plafond de dépenses.
+
+### Configuration commitée (version 3.0)
+
+Depuis le relais, `extension/config.js` ne contient plus aucun secret (`TRELLO_KEY` publique, `RELAY_URL`, `DEFAULT_LIST`). Il est **commité** et `config.example.js` est supprimé : le paquet envoyé à AMO correspond exactement au dépôt. La clé Groq n'existe que dans les secrets du relais Cloudflare.
