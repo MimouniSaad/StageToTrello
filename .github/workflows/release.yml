@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: write   # nécessaire pour créer la release, et seulement dans ce job
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # tout l'historique, pour vérifier que l'étiquette est sur main
       - uses: actions/setup-node@v4
