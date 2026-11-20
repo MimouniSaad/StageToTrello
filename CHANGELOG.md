@@ -14,6 +14,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 - Release automatique : une étiquette `v<version>` sur `main` crée la GitHub Release avec le zip et les notes du CHANGELOG, après vérification de la version (#58).
 - Dependabot : mises à jour hebdomadaires groupées des dépendances npm et des GitHub Actions, PR vers `develop` (#59).
 - ESLint (configuration par environnement : extension, relais, tests, scripts) et Prettier, vérifiés par la CI dans le job « Lint de l'extension » ; scripts `lint:js`, `format`, `format:check` (#55).
+- Conteneur de développement (`.devcontainer/`) : Node 22 (image figée), dépendances installées automatiquement, GitHub CLI, extensions ESLint et Prettier, port du relais local, jeton Cloudflare transmis depuis la machine hôte (#60).
 
 ### Modifié
 - Nouveau design du popup, plus apaisant : palette douce, mode sombre dédié, compteur avec barre de progression, bandeau d'état avec icône, focus visible au clavier (#61).
