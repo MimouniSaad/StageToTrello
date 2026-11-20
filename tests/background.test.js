@@ -24,14 +24,28 @@ function loadBackground({ authResult }) {
       },
     },
     runtime: {
-      getPlatformInfo: async () => { pings.push(1); return {}; },
-      onMessage: { addListener: (fn) => { listener = fn; } },
+      getPlatformInfo: async () => {
+        pings.push(1);
+        return {};
+      },
+      onMessage: {
+        addListener: (fn) => {
+          listener = fn;
+        },
+      },
     },
     storage: { local: { set: async (o) => Object.assign(stored, o) } },
   };
   const ctx = vm.createContext({
-    browser, URL, URLSearchParams, console,
-    setInterval: (fn) => { const id = nextId++; timers.set(id, fn); return id; },
+    browser,
+    URL,
+    URLSearchParams,
+    console,
+    setInterval: (fn) => {
+      const id = nextId++;
+      timers.set(id, fn);
+      return id;
+    },
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext('const CONFIG = { TRELLO_KEY: "K" };', ctx);
@@ -74,8 +88,14 @@ function loadForAdd({ popupOpen = false } = {}) {
     runtime: {
       getPlatformInfo: async () => ({}),
       getURL: (p) => `moz-extension://x/${p}`,
-      onMessage: { addListener: (fn) => { listener = fn; } },
-      sendMessage: async (m) => { broadcasts.push(m); },
+      onMessage: {
+        addListener: (fn) => {
+          listener = fn;
+        },
+      },
+      sendMessage: async (m) => {
+        broadcasts.push(m);
+      },
     },
     browserAction: {
       setBadgeText: ({ text }) => badges.push(text),
@@ -83,17 +103,28 @@ function loadForAdd({ popupOpen = false } = {}) {
     },
     extension: { getViews: () => (popupOpen ? [{}] : []) },
     notifications: {
-      create: async (n) => { notifications.push(n); return "n1"; },
+      create: async (n) => {
+        notifications.push(n);
+        return "n1";
+      },
       onClicked: { addListener: () => {} },
     },
     tabs: { create: () => {} },
     storage: { local: { set: async () => {} } },
   };
   const ctx = vm.createContext({
-    browser, URL, URLSearchParams, console,
-    setInterval: (fn) => { const id = nextId++; timers.set(id, fn); return id; },
+    browser,
+    URL,
+    URLSearchParams,
+    console,
+    setInterval: (fn) => {
+      const id = nextId++;
+      timers.set(id, fn);
+      return id;
+    },
     clearInterval: (id) => timers.delete(id),
-    setTimeout: () => 0, clearTimeout: () => {},
+    setTimeout: () => 0,
+    clearTimeout: () => {},
     AddOffer: {
       run: (args) => new Promise((resolve) => runs.push({ args, resolve })),
     },
@@ -116,7 +147,11 @@ test("ajout : un seul à la fois, arrière-plan éveillé pendant le traitement"
   const second = await bg.send({ type: "add", tabId: 1, board: "b", list: "l" });
   assert.equal(second.code, "busy");
   assert.equal(bg.runs.length, 1);
-  bg.runs[0].resolve({ ok: true, name: "Capgemini - Stagiaire DevOps", card: "https://trello.com/c/abc" });
+  bg.runs[0].resolve({
+    ok: true,
+    name: "Capgemini - Stagiaire DevOps",
+    card: "https://trello.com/c/abc",
+  });
   const res = await first;
   assert.equal(res.ok, true);
   assert.equal(bg.timers.size, 0);
@@ -127,7 +162,11 @@ test("ajout réussi, popup fermé : badge ✓, notification et message addDone",
   const bg = loadForAdd({ popupOpen: false });
   const p = bg.send({ type: "add", tabId: 1, board: "b", list: "l" });
   await tick();
-  bg.runs[0].resolve({ ok: true, name: "Capgemini - Stagiaire DevOps", card: "https://trello.com/c/abc" });
+  bg.runs[0].resolve({
+    ok: true,
+    name: "Capgemini - Stagiaire DevOps",
+    card: "https://trello.com/c/abc",
+  });
   await p;
   assert.deepEqual(bg.badges, ["…", "✓"]);
   assert.equal(bg.notifications.length, 1);

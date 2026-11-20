@@ -13,7 +13,10 @@ function reply(status, body) {
 
 function fakeFetch(responses) {
   const calls = [];
-  const fn = async (url, init) => { calls.push({ url, init }); return responses.shift(); };
+  const fn = async (url, init) => {
+    calls.push({ url, init });
+    return responses.shift();
+  };
   return { fn, calls };
 }
 
@@ -43,27 +46,48 @@ test("une réponse 401 lève une TrelloError lisible", async () => {
 });
 
 test("une erreur réseau lève une TrelloError de statut 0", async () => {
-  const t = makeTrello({ key: "K", token: "T", fetchFn: async () => { throw new TypeError("x"); } });
+  const t = makeTrello({
+    key: "K",
+    token: "T",
+    fetchFn: async () => {
+      throw new TypeError("x");
+    },
+  });
   await assert.rejects(t.listBoards(), (e) => e instanceof TrelloError && e.status === 0);
 });
 
 test("listBoards renvoie tableaux et listes", async () => {
-  const f = fakeFetch([reply(200, [{ id: "b", name: "B", lists: [{ id: "l", name: "L", pos: 1 }] }])]);
+  const f = fakeFetch([
+    reply(200, [{ id: "b", name: "B", lists: [{ id: "l", name: "L", pos: 1 }] }]),
+  ]);
   const boards = await makeTrello({ key: "K", token: "T", fetchFn: f.fn }).listBoards();
   assert.deepEqual(boards, [{ id: "b", name: "B", lists: [{ id: "l", name: "L" }] }]);
 });
 
 test("boardLabels garde la première étiquette de chaque nom", async () => {
-  const f = fakeFetch([reply(200, [{ id: "1", name: "Cloud" }, { id: "2", name: "" }, { id: "3", name: "Cloud" }])]);
+  const f = fakeFetch([
+    reply(200, [
+      { id: "1", name: "Cloud" },
+      { id: "2", name: "" },
+      { id: "3", name: "Cloud" },
+    ]),
+  ]);
   const by = await makeTrello({ key: "K", token: "T", fetchFn: f.fn }).boardLabels("b");
   assert.deepEqual(by, { Cloud: "1" });
   assert.ok(f.calls[0].url.startsWith("https://api.trello.com/1/boards/b/labels"));
 });
 
 test("createCard envoie un corps JSON et tronque la description", async () => {
-  const f = fakeFetch([reply(200, { id: "c1", shortUrl: "https://trello.com/c/x" }), reply(200, {})]);
+  const f = fakeFetch([
+    reply(200, { id: "c1", shortUrl: "https://trello.com/c/x" }),
+    reply(200, {}),
+  ]);
   const r = await makeTrello({ key: "K", token: "T", fetchFn: f.fn }).createCard({
-    listId: "l", name: "Acme - Dev", desc: "d".repeat(20000), labelIds: ["1", "2"], url: "https://o.fr",
+    listId: "l",
+    name: "Acme - Dev",
+    desc: "d".repeat(20000),
+    labelIds: ["1", "2"],
+    url: "https://o.fr",
   });
   assert.deepEqual(r, { shortUrl: "https://trello.com/c/x" });
   const [card, att] = f.calls;
@@ -80,12 +104,19 @@ test("createCard envoie un corps JSON et tronque la description", async () => {
 });
 
 test("createCard réussit même si la pièce jointe échoue", async () => {
-  const f = fakeFetch([reply(200, { id: "c1", shortUrl: "https://trello.com/c/x" }), reply(500, "oops")]);
+  const f = fakeFetch([
+    reply(200, { id: "c1", shortUrl: "https://trello.com/c/x" }),
+    reply(500, "oops"),
+  ]);
   const warn = console.warn;
   console.warn = () => {};
   try {
     const r = await makeTrello({ key: "K", token: "T", fetchFn: f.fn }).createCard({
-      listId: "l", name: "n", desc: "d", labelIds: [], url: "https://o.fr",
+      listId: "l",
+      name: "n",
+      desc: "d",
+      labelIds: [],
+      url: "https://o.fr",
     });
     assert.deepEqual(r, { shortUrl: "https://trello.com/c/x" });
   } finally {

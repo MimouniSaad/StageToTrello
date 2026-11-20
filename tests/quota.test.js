@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const Quota = require("../extension/lib/quota.js");
 
-const NOW = Date.UTC(2026, 10, 18, 21, 48);   // 18/11/2026 21:48 UTC
+const NOW = Date.UTC(2026, 10, 18, 21, 48); // 18/11/2026 21:48 UTC
 
 test("la limite par défaut est de 40 offres par jour", () => {
   assert.equal(Quota.DAILY_LIMIT, 40);
@@ -16,8 +16,13 @@ test("nextReset : minuit UTC suivant, y compris en fin de mois et d'année", () 
 
 test("status : aucun usage enregistré", () => {
   const st = Quota.status(undefined, NOW);
-  assert.deepEqual(st, { used: 0, limit: 40, remaining: 40, blocked: false,
-                         resetAt: Date.UTC(2026, 10, 19) });
+  assert.deepEqual(st, {
+    used: 0,
+    limit: 40,
+    remaining: 40,
+    blocked: false,
+    resetAt: Date.UTC(2026, 10, 19),
+  });
 });
 
 test("status : bloqué à partir de 40 le même jour", () => {
@@ -52,11 +57,14 @@ test("formatWait : heures, minutes et moins d'une minute", () => {
   assert.equal(Quota.formatWait(45 * 60 * 1000), "45 min");
   assert.equal(Quota.formatWait(2 * 3600 * 1000), "2 h");
   assert.equal(Quota.formatWait((2 * 60 + 12) * 60 * 1000), "2 h 12 min");
-  assert.equal(Quota.formatWait((3 * 60 + 5) * 60 * 1000 - 1000), "3 h 05 min");  // arrondi à la minute supérieure
+  assert.equal(Quota.formatWait((3 * 60 + 5) * 60 * 1000 - 1000), "3 h 05 min"); // arrondi à la minute supérieure
 });
 
 test("blockedMessage : limite, temps restant et heure de réinitialisation", () => {
   const st = Quota.status({ day: "2026-11-18", count: 40 }, NOW);
   const msg = Quota.blockedMessage(st, NOW);
-  assert.match(msg, /^Limite de 40 offres par jour atteinte\. Réinitialisation dans 2 h 12 min \(à \d{2}:\d{2}\)\.$/);
+  assert.match(
+    msg,
+    /^Limite de 40 offres par jour atteinte\. Réinitialisation dans 2 h 12 min \(à \d{2}:\d{2}\)\.$/,
+  );
 });

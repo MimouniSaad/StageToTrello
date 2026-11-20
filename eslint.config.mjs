@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import globals from "globals";
+import prettier from "eslint-config-prettier";
 
 export default [
   // 1. Fichiers qui ne sont pas notre code (ESLint ne lit pas le .gitignore)
@@ -84,4 +85,7 @@ export default [
       },
     },
   },
+
+  // 7. En dernier : désactive les règles de style d'ESLint qui entreraient en conflit avec Prettier
+  prettier,
 ];
