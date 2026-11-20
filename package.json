@@ -6,6 +6,9 @@
     "test": "node --test tests/*.test.js relay/test/*.test.js",
     "package": "node scripts/package.js",
     "lint": "web-ext lint --source-dir extension",
+    "lint:js": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "version:check": "node scripts/check-version.js",
     "coverage": "node --test --experimental-test-coverage --test-coverage-include='extension/**' --test-coverage-include='relay/src/**' --test-coverage-exclude='extension/lib/Readability.js' --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=95 tests/*.test.js relay/test/*.test.js"
   },

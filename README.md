@@ -228,6 +228,16 @@ Elle mesure `extension/lib/` (hors `Readability.js`, code tiers) et `relay/src/`
 
 Le popup (`popup.js`), le script d'arrière-plan (`background.js`, testé en partie dans un contexte isolé) et le script injecté (`page.js`) dépendent du navigateur et ne sont pas comptés ; ils se testent à la main dans Firefox (étape 4 de la mise en place).
 
+### Qualité du code
+
+```bash
+npm run lint:js        # ESLint : erreurs probables (variables inutilisées, globales inconnues…)
+npm run format:check   # Prettier : vérifie la mise en forme
+npm run format         # Prettier : met en forme tous les fichiers
+```
+
+La configuration ESLint (`eslint.config.mjs`) déclare un environnement par dossier : `extension/` (scripts classiques du navigateur et objets partagés `Core`, `Quota`…), `relay/src/` (Cloudflare Workers), `relay/test/` et `tests/`, `scripts/` (Node). Prettier (`.prettierrc.json`) exclut le code tiers, les fixtures des tests et le Markdown (`.prettierignore`). Les deux tournent dans le job CI « Lint de l'extension » : une PR avec une erreur ESLint ou un fichier mal formaté est bloquée. Le commit de formatage initial est ignoré par `git blame` (`.git-blame-ignore-revs`).
+
 ## Sécurité et confidentialité
 
 - **Clé Groq** : elle n'est **pas** dans l'extension. Elle est enregistrée comme secret du relais Cloudflare (`wrangler secret put GROQ_API_KEY`) et ne doit **jamais** apparaître dans le dépôt Git. En cas de fuite, régénère-la sur la console Groq puis remplace le secret, sans mise à jour de l'extension.

@@ -46,7 +46,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run version:check
-      - run: npm run lint
+      - name: ESLint (erreurs probables dans le code)
+        run: npm run lint:js
+      - name: Prettier (mise en forme)
+        run: npm run format:check
+      - name: web-ext lint (règles de Mozilla pour l'extension)
+        run: npm run lint
 
   package:
     name: Paquet AMO
