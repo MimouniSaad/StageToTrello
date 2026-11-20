@@ -29,7 +29,7 @@ async function connectTrello() {
 // clique ailleurs, ce qui interromprait l'analyse ou la création de la carte.
 let adding = false;
 let badgeTimer = null;
-const cardLinks = new Map();   // notification → lien de la carte
+const cardLinks = new Map(); // notification → lien de la carte
 
 function setBadge(text, color) {
   clearTimeout(badgeTimer);
@@ -65,7 +65,11 @@ async function addOffer({ tabId, board, list }) {
     adding = false;
   }
   setBadge(result.ok ? "✓" : "✗", result.ok ? "#16A34A" : "#DC2626");
-  try { await notify(result); } catch (e) { console.warn(`Notification impossible : ${e.message}`); }
+  try {
+    await notify(result);
+  } catch (e) {
+    console.warn(`Notification impossible : ${e.message}`);
+  }
   // Prévient un popup rouvert entre-temps (aucun destinataire = erreur ignorée).
   browser.runtime.sendMessage({ type: "addDone", result }).catch(() => {});
   return result;

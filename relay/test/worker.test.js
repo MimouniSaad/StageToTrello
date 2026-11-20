@@ -9,22 +9,34 @@ function makeKV() {
   const store = new Map();
   return {
     store,
-    async get(k) { return store.has(k) ? store.get(k) : null; },
-    async put(k, v) { store.set(k, v); },
+    async get(k) {
+      return store.has(k) ? store.get(k) : null;
+    },
+    async put(k, v) {
+      store.set(k, v);
+    },
   };
 }
 
 function makeEnv(extra = {}) {
-  return { USAGE: makeKV(), TRELLO_KEY: "K", GROQ_API_KEY: "G",
-           GROQ_MODELS: "openai/gpt-oss-120b,openai/gpt-oss-20b", DAILY_LIMIT: "40", ...extra };
+  return {
+    USAGE: makeKV(),
+    TRELLO_KEY: "K",
+    GROQ_API_KEY: "G",
+    GROQ_MODELS: "openai/gpt-oss-120b,openai/gpt-oss-20b",
+    DAILY_LIMIT: "40",
+    ...extra,
+  };
 }
 
 const groqOk = (content = "FOUND: yes\nCOMPANY: Capgemini\nTITLE: Ingénieur GRC\nLABELS: Cloud") =>
   new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
 
 // Remplace fetch : routes Trello et Groq, avec journal des appels.
-function mockFetch({ trello = () => new Response(JSON.stringify({ id: MEMBER }), { status: 200 }),
-                     groq = () => groqOk() } = {}) {
+function mockFetch({
+  trello = () => new Response(JSON.stringify({ id: MEMBER }), { status: 200 }),
+  groq = () => groqOk(),
+} = {}) {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), init });
@@ -35,14 +47,21 @@ function mockFetch({ trello = () => new Response(JSON.stringify({ id: MEMBER }),
   return calls;
 }
 
-const body = { url: "https://exemple.fr/offre", title: "Offre", site: "Exemple",
-               text: "Stage DevOps chez Capgemini…", labels: ["Cloud", "DevOps"] };
+const body = {
+  url: "https://exemple.fr/offre",
+  title: "Offre",
+  site: "Exemple",
+  text: "Stage DevOps chez Capgemini…",
+  labels: ["Cloud", "DevOps"],
+};
 
 function req(path, { method = "POST", token = TOKEN, payload = body } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token !== null) headers.Authorization = `Bearer ${token}`;
   return new Request(`https://relay.test${path}`, {
-    method, headers, body: method === "POST" ? JSON.stringify(payload) : undefined,
+    method,
+    headers,
+    body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
 }
 
@@ -122,7 +141,10 @@ test("limite quotidienne : 429 avec resetAt, sans appel à Groq", async () => {
   assert.equal(data.code, "daily_limit");
   assert.equal(data.used, 2);
   assert.equal(data.resetAt, nextReset(Date.now()));
-  assert.equal(calls.slice(before).filter((c) => c.url.startsWith("https://api.groq.com")).length, 0);
+  assert.equal(
+    calls.slice(before).filter((c) => c.url.startsWith("https://api.groq.com")).length,
+    0,
+  );
 });
 
 test("le compteur d'hier n'est pas pris en compte", async () => {
@@ -134,16 +156,21 @@ test("le compteur d'hier n'est pas pris en compte", async () => {
 });
 
 test("429 de Groq : passage au modèle suivant", async () => {
-  mockFetch({ groq: (b) => b.model === "openai/gpt-oss-120b"
-    ? new Response("rate limited", { status: 429, headers: { "retry-after": "7" } })
-    : groqOk() });
+  mockFetch({
+    groq: (b) =>
+      b.model === "openai/gpt-oss-120b"
+        ? new Response("rate limited", { status: 429, headers: { "retry-after": "7" } })
+        : groqOk(),
+  });
   const data = await (await worker.fetch(req("/extract"), makeEnv())).json();
   assert.equal(data.ok, true);
   assert.equal(data.model, "openai/gpt-oss-20b");
 });
 
 test("tous les modèles indisponibles : 503, retryAfter, et rien n'est compté", async () => {
-  mockFetch({ groq: () => new Response("busy", { status: 503, headers: { "retry-after": "12" } }) });
+  mockFetch({
+    groq: () => new Response("busy", { status: 503, headers: { "retry-after": "12" } }),
+  });
   const env = makeEnv();
   const r = await worker.fetch(req("/extract"), env);
   assert.equal(r.status, 503);
@@ -156,16 +183,35 @@ test("tous les modèles indisponibles : 503, retryAfter, et rien n'est compté",
 test("corps invalide : 400", async () => {
   mockFetch();
   const env = makeEnv();
-  assert.equal((await worker.fetch(req("/extract", { payload: { url: "file:///etc/passwd", text: "x" } }), env)).status, 400);
-  assert.equal((await worker.fetch(req("/extract", { payload: { url: "https://a.fr", text: "  " } }), env)).status, 400);
+  assert.equal(
+    (
+      await worker.fetch(
+        req("/extract", { payload: { url: "file:///etc/passwd", text: "x" } }),
+        env,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await worker.fetch(req("/extract", { payload: { url: "https://a.fr", text: "  " } }), env))
+      .status,
+    400,
+  );
   const bad = new Request("https://relay.test/extract", {
-    method: "POST", headers: { Authorization: `Bearer ${TOKEN}` }, body: "pas du json" });
+    method: "POST",
+    headers: { Authorization: `Bearer ${TOKEN}` },
+    body: "pas du json",
+  });
   assert.equal((await worker.fetch(bad, env)).status, 400);
 });
 
 test("parseBody borne les champs", () => {
-  const p = parseBody({ url: "https://a.fr/" + "x".repeat(5000), text: "t".repeat(20000),
-                        title: "T".repeat(1000), labels: Array(80).fill("L".repeat(100)).concat([3, ""]) });
+  const p = parseBody({
+    url: "https://a.fr/" + "x".repeat(5000),
+    text: "t".repeat(20000),
+    title: "T".repeat(1000),
+    labels: Array(80).fill("L".repeat(100)).concat([3, ""]),
+  });
   assert.equal(p.url.length, 2000);
   assert.equal(p.text.length, 10000);
   assert.equal(p.meta.title.length, 500);
@@ -184,7 +230,11 @@ test("les erreurs ne contiennent ni la clé Groq ni le jeton", async () => {
 // ---------- Cas d'erreur (couverture) ----------
 
 test("Trello injoignable (erreur réseau) : 502", async () => {
-  mockFetch({ trello: () => { throw new TypeError("NetworkError"); } });
+  mockFetch({
+    trello: () => {
+      throw new TypeError("NetworkError");
+    },
+  });
   const r = await worker.fetch(req("/extract"), makeEnv());
   assert.equal(r.status, 502);
   assert.equal((await r.json()).code, "trello_unreachable");
@@ -192,10 +242,15 @@ test("Trello injoignable (erreur réseau) : 502", async () => {
 
 test("Groq : erreur réseau, réponse 4xx ou JSON inutilisable → modèle suivant", async () => {
   const cases = [
-    () => { throw new TypeError("NetworkError"); },
+    () => {
+      throw new TypeError("NetworkError");
+    },
     () => new Response("bad request", { status: 400 }),
     () => new Response("pas du json", { status: 200 }),
-    () => new Response(JSON.stringify({ choices: [{ message: { content: "<think>…</think>" } }] }), { status: 200 }),
+    () =>
+      new Response(JSON.stringify({ choices: [{ message: { content: "<think>…</think>" } }] }), {
+        status: 200,
+      }),
   ];
   const warn = console.warn;
   console.warn = () => {};
@@ -215,7 +270,8 @@ test("erreur inattendue : 500 générique, sans détail", async () => {
   mockFetch();
   const env = makeEnv();
   const get = env.USAGE.get;
-  env.USAGE.get = async (k) => {   // le compteur du jour devient illisible
+  env.USAGE.get = async (k) => {
+    // le compteur du jour devient illisible
     if (k.startsWith("use:")) throw new Error("KV indisponible : détail interne");
     return get(k);
   };

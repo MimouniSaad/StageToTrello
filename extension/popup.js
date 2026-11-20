@@ -3,7 +3,7 @@ const PRIVACY_URL = "https://github.com/MimouniSaad/StageToTrello/blob/main/PRIV
 let boards = [];
 let trello = null;
 let quotaTimer = null;
-let busy = false;   // un ajout est en cours (lancé ici ou avant la réouverture du popup)
+let busy = false; // un ajout est en cours (lancé ici ou avant la réouverture du popup)
 
 async function quotaStatus() {
   const { [Quota.STORAGE_KEY]: usage } = await browser.storage.local.get(Quota.STORAGE_KEY);
@@ -24,7 +24,8 @@ async function renderQuota() {
     quotaTimer = setTimeout(renderQuota, Math.min(20000, Math.max(1000, st.resetAt - Date.now())));
   } else {
     el.className = "quota";
-    $("quota-text").textContent = `${st.remaining} offre${st.remaining > 1 ? "s" : ""} restante${st.remaining > 1 ? "s" : ""} aujourd'hui sur ${st.limit}`;
+    $("quota-text").textContent =
+      `${st.remaining} offre${st.remaining > 1 ? "s" : ""} restante${st.remaining > 1 ? "s" : ""} aujourd'hui sur ${st.limit}`;
     $("add").disabled = busy;
   }
   return st;
@@ -45,7 +46,8 @@ function show(screen) {
 
 function configError() {
   return typeof CONFIG === "undefined" || !CONFIG.TRELLO_KEY || !CONFIG.RELAY_URL
-    ? "config.js manquant ou incomplet : voir le README." : null;
+    ? "config.js manquant ou incomplet : voir le README."
+    : null;
 }
 
 async function logout(message = "") {
@@ -91,7 +93,8 @@ function fillLists(boardId, selectedListId) {
 // Affiche le résultat d'un ajout fait par le script d'arrière-plan.
 async function showResult(result) {
   if (!result) return;
-  if (result.code === "busy") {   // un ajout précédent continue : on attendra « addDone »
+  if (result.code === "busy") {
+    // un ajout précédent continue : on attendra « addDone »
     busy = true;
     $("add").disabled = true;
     return setStatus("Un ajout est déjà en cours…");
@@ -99,7 +102,8 @@ async function showResult(result) {
   busy = false;
   if (result.ok) setStatus(`✓ ${result.name}`, "ok");
   else if (result.code === "unauthorized") await logout(result.error);
-  else if (result.code === "daily_limit") setStatus("");   // le message s'affiche sous le bouton
+  else if (result.code === "daily_limit")
+    setStatus(""); // le message s'affiche sous le bouton
   else setStatus(`✗ ${result.error}`, "err");
   await renderQuota();
 }
@@ -110,7 +114,7 @@ async function add() {
   const board = $("board").value;
   const list = $("list").value;
   if (!board || !list) return setStatus("✗ Choisis un tableau et une liste.", "err");
-  if ((await quotaStatus()).blocked) return renderQuota();   // limite déjà connue
+  if ((await quotaStatus()).blocked) return renderQuota(); // limite déjà connue
   busy = true;
   $("add").disabled = true;
   setStatus("Création de la carte…");
@@ -155,14 +159,16 @@ async function init() {
     $("board").value = board.id;
     fillLists(board.id, target.list);
 
-    if (!target.list) {  // première utilisation : liste par défaut
+    if (!target.list) {
+      // première utilisation : liste par défaut
       const def = board.lists.find((l) => l.name === CONFIG.DEFAULT_LIST);
       if (def) $("list").value = def.id;
     }
     $("auto").checked = !!saved.auto;
     setStatus("");
     const { adding } = (await browser.runtime.sendMessage({ type: "status" })) || {};
-    if (adding) {   // ajout lancé juste avant la réouverture du popup
+    if (adding) {
+      // ajout lancé juste avant la réouverture du popup
       busy = true;
       setStatus("Création de la carte…");
     }
@@ -175,7 +181,10 @@ async function init() {
 }
 
 $("connect").addEventListener("click", connect);
-$("logout").addEventListener("click", (e) => { e.preventDefault(); logout(); });
+$("logout").addEventListener("click", (e) => {
+  e.preventDefault();
+  logout();
+});
 for (const link of document.querySelectorAll(".privacy")) {
   link.addEventListener("click", (e) => {
     e.preventDefault();

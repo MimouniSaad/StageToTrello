@@ -26,8 +26,10 @@ Première version publique.
 `;
 
 test("releaseNotes extrait la section d'une version, sans le titre", () => {
-  assert.equal(releaseNotes(CHANGELOG, "3.1.0"),
-    "### Ajouté\n- CI GitHub Actions\n\n### Modifié\n- Nouveau design");
+  assert.equal(
+    releaseNotes(CHANGELOG, "3.1.0"),
+    "### Ajouté\n- CI GitHub Actions\n\n### Modifié\n- Nouveau design",
+  );
 });
 
 test("releaseNotes s'arrête aux liens de bas de page", () => {
