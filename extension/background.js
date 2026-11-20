@@ -13,7 +13,7 @@ async function connectTrello() {
       url: Core.authorizeUrl(CONFIG.TRELLO_KEY, browser.identity.getRedirectURL()),
       interactive: true,
     });
-  } catch (e) {
+  } catch {
     return { ok: false, error: "Connexion Trello annulée." };
   } finally {
     clearInterval(keepAlive);
