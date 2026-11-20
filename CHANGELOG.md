@@ -12,6 +12,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 - Numérotation SemVer, ce journal des modifications et vérification de la cohérence des versions en CI (#57).
 - Couverture de tests mesurée en CI avec seuils minimaux (lignes 95 %, branches 85 %, fonctions 95 %) et résumé dans l'exécution ; nouveaux tests des cas d'erreur du relais (#56).
 - Release automatique : une étiquette `v<version>` sur `main` crée la GitHub Release avec le zip et les notes du CHANGELOG, après vérification de la version (#58).
+- Dependabot : mises à jour hebdomadaires groupées des dépendances npm et des GitHub Actions, PR vers `develop` (#59).
+- ESLint (configuration par environnement : extension, relais, tests, scripts) et Prettier, vérifiés par la CI dans le job « Lint de l'extension » ; scripts `lint:js`, `format`, `format:check` (#55).
 
 ### Modifié
 - Nouveau design du popup, plus apaisant : palette douce, mode sombre dédié, compteur avec barre de progression, bandeau d'état avec icône, focus visible au clavier (#61).
