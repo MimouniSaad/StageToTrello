@@ -23,14 +23,15 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 2. [Comment ça marche](#comment-ça-marche)
 3. [Contenu du dépôt](#contenu-du-dépôt)
 4. [Mise en place (propriétaire de l'extension)](#mise-en-place-propriétaire-de-lextension)
-5. [Publier une nouvelle version](#publier-une-nouvelle-version)
-6. [Utilisation](#utilisation)
-7. [Détail du fonctionnement](#détail-du-fonctionnement)
-8. [Tests](#tests)
-9. [Sécurité et confidentialité](#sécurité-et-confidentialité)
-10. [Limites connues](#limites-connues)
-11. [Dépannage](#dépannage)
-12. [Licence](#licence)
+5. [Développer dans le conteneur](#développer-dans-le-conteneur)
+6. [Publier une nouvelle version](#publier-une-nouvelle-version)
+7. [Utilisation](#utilisation)
+8. [Détail du fonctionnement](#détail-du-fonctionnement)
+9. [Tests](#tests)
+10. [Sécurité et confidentialité](#sécurité-et-confidentialité)
+11. [Limites connues](#limites-connues)
+12. [Dépannage](#dépannage)
+13. [Licence](#licence)
 
 ---
 
@@ -89,6 +90,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
 ├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
+├── .devcontainer/            # Conteneur de développement (Node 22, npm ci, port du relais local)
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
 ├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
 ├── scripts/release-notes.js  # Notes d'une version extraites de CHANGELOG.md (workflow Release)
@@ -136,6 +138,35 @@ Cette adresse dépend de l'identifiant de l'extension (`browser_specific_setting
 `about:debugging#/runtime/this-firefox` → **Charger un module complémentaire temporaire…** → `extension/manifest.json`. L'extension disparaît au redémarrage de Firefox.
 
 Les installations permanentes passent par la version publiée sur AMO (voir ci-dessous).
+
+## Développer dans le conteneur
+
+Le dépôt fournit un conteneur de développement (`.devcontainer/devcontainer.json`) : Node 22, dépendances installées automatiquement (`npm ci`), GitHub CLI, extensions ESLint et Prettier pour VS Code. Tout le monde travaille avec le même environnement que la CI.
+
+**Prérequis :** Docker.
+
+**Ouvrir le projet dans le conteneur :**
+
+- VS Code : `F1` → *Dev Containers: Reopen in Container* ;
+- IDE JetBrains : *File → Remote Development → Dev Containers* ;
+- sans IDE :
+
+  ```bash
+  npx @devcontainers/cli up --workspace-folder .
+  npx @devcontainers/cli exec --workspace-folder . bash -c "npm test && npm run lint:js && npm run format:check && npm run package"
+  ```
+
+**Firefox reste sur la machine hôte.** Lancer un navigateur graphique depuis Docker est complexe et fragile ; le dossier du projet étant partagé avec le conteneur, on charge `extension/` comme d'habitude depuis `about:debugging#/runtime/this-firefox`. Le conteneur sert au code, aux tests, au lint et au paquet.
+
+**Relais en local :** `cd relay && npx wrangler dev`, accessible sur le port 8787 (redirigé automatiquement par l'IDE).
+
+**Jeton Cloudflare :** nécessaire seulement pour `wrangler deploy`. Il est recopié depuis la machine hôte (`remoteEnv` + `${localEnv:CLOUDFLARE_API_TOKEN}`) et n'est jamais écrit dans le dépôt. Charge-le **avant** de créer le conteneur :
+
+```bash
+read -s "CLOUDFLARE_API_TOKEN?Jeton Cloudflare : " && export CLOUDFLARE_API_TOKEN && echo
+```
+
+Utilise un jeton d'API à droits limités (modèle « Edit Cloudflare Workers », avec une date d'expiration), jamais la Global API Key.
 
 ## Publier une nouvelle version
 
