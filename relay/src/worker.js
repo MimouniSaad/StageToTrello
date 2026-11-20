@@ -96,7 +96,7 @@ async function callGroq(prompt, env) {
       console.warn(`Groq ${model} : HTTP ${r.status}`);
       continue;
     }
-    let content = "";
+    let content;
     try {
       content = (await r.json()).choices[0].message.content || "";
     } catch {
