@@ -1,31 +1,49 @@
-# Basic `dependabot.yml` file with
-# minimum configuration for two package managers
-
+# Mises à jour automatiques des dépendances, par PR vers develop.
+# Référence : https://docs.github.com/fr/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 version: 2
+
 updates:
-  # Enable version updates for npm
+  # Dépendances npm du dépôt (package.json à la racine : web-ext)
   - package-ecosystem: "npm"
-    # Look for `package.json` and `lock` files in the `root` directory
     directory: "/"
-    # Check the npm registry for updates every day (weekdays)
-    schedule:
-      interval: "daily"
-    # target only the develop branch
     target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Paris"
+    cooldown:
+      default-days: 3          # attendre 3 jours après la sortie d'une version
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "npm"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      npm-mineures:            # mineures + correctifs : une seule PR par semaine
+        update-types:
+          - "minor"
+          - "patch"
 
-
-  # Enable version updates for GitHub Actions
+  # Actions utilisées dans .github/workflows/
   - package-ecosystem: "github-actions"
-    # Workflow files stored in the default location of `.github/workflows`
-    # You don't need to specify `/.github/workflows` for `directory`. You can use `directory: "/"`.
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
-    # target only the develop branch
-    target-branch: "develop"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "github-actions"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      actions:                 # toutes les actions ensemble, majeures comprises
+        patterns:
+          - "*"
