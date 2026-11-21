@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 ## [Non publié]
 
+## [3.1.0] - 2026-11-21
+
+Nouveau design du popup, description des cartes mise en forme, et chaîne DevOps complète (CI, protection des branches, release automatique, Dependabot, ESLint et Prettier, conteneur de développement).
+
 ### Ajouté
 - CI GitHub Actions sur chaque PR et chaque push vers `develop` et `main` : tests, lint de l'extension, paquet AMO, construction du relais (#53).
 - Protection des branches `main` et `develop` par un ruleset ; `main` n'accepte que des PR venant de `develop` (#54).
@@ -55,5 +59,6 @@ Extension autonome (sans serveur Python), clé Groq intégrée au paquet ; diffu
 
 Extension Firefox et serveur Python local (Gemini puis Groq) ; usage personnel.
 
-[Non publié]: https://github.com/MimouniSaad/StageToTrello/compare/v3.0.0...develop
+[Non publié]: https://github.com/MimouniSaad/StageToTrello/compare/v3.1.0...develop
+[3.1.0]: https://github.com/MimouniSaad/StageToTrello/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/MimouniSaad/StageToTrello/releases/tag/v3.0.0
