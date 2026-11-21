@@ -2,7 +2,7 @@
 // L'extension n'envoie que le contenu de l'offre et le jeton Trello de l'utilisateur.
 const Relay = (() => {
   const CoreRef = typeof Core !== "undefined" ? Core : require("./core.js");
-  const TIMEOUT_MS = 25000;   // le relais essaie plusieurs modèles : on laisse un peu de marge
+  const TIMEOUT_MS = 25000; // le relais essaie plusieurs modèles : on laisse un peu de marge
 
   class RelayError extends Error {
     constructor(message, status, data = {}) {
@@ -17,10 +17,15 @@ const Relay = (() => {
   // Compteur du relais : { used, limit, resetAt } si la réponse le contient.
   function usageOf(data) {
     return data && Number.isFinite(data.used) && Number.isFinite(data.resetAt)
-      ? { used: data.used, limit: data.limit, resetAt: data.resetAt } : null;
+      ? { used: data.used, limit: data.limit, resetAt: data.resetAt }
+      : null;
   }
 
-  async function extract(page, labelNames, { relayUrl, token, fetchFn = fetch, timeoutMs = TIMEOUT_MS }) {
+  async function extract(
+    page,
+    labelNames,
+    { relayUrl, token, fetchFn = fetch, timeoutMs = TIMEOUT_MS },
+  ) {
     const init = {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -43,9 +48,17 @@ const Relay = (() => {
       throw new RelayError("Service d'analyse injoignable.", 0, { code: "unreachable" });
     }
     let data = {};
-    try { data = await r.json(); } catch { /* corps vide ou non JSON */ }
+    try {
+      data = await r.json();
+    } catch {
+      /* corps vide ou non JSON */
+    }
     if (!r.ok || !data.ok) {
-      throw new RelayError(data.error || `Erreur du service d'analyse (${r.status}).`, r.status, data);
+      throw new RelayError(
+        data.error || `Erreur du service d'analyse (${r.status}).`,
+        r.status,
+        data,
+      );
     }
     return {
       ...CoreRef.parseLlm(data.content || "", labelNames),

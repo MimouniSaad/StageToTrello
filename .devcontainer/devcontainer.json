@@ -1,0 +1,39 @@
+// Conteneur de développement de StageToTrello : https://containers.dev
+// Firefox reste sur la machine hôte (voir README, « Développer dans le conteneur »).
+{
+  "name": "StageToTrello",
+  // Node 22 sur Debian 13 (trixie), version majeure 5 de l'image figée : plus reproductible
+  // que « :22 », dont la base Debian et la version de l'image peuvent changer sans prévenir.
+  // Liste des étiquettes : https://mcr.microsoft.com/v2/devcontainers/javascript-node/tags/list
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:5-22-trixie",
+
+  // Outils supplémentaires (https://containers.dev/features)
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Dépendances exactes de package-lock.json, une seule fois à la création du conteneur
+  "postCreateCommand": "npm ci",
+
+  // Relais en local : cd relay && npx wrangler dev
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "Relais (wrangler dev)", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+
+  // Jeton Cloudflare recopié depuis la machine hôte, jamais écrit dans ce fichier.
+  // Vide si la variable n'existe pas sur l'hôte : seul « wrangler deploy » en a besoin.
+  "remoteEnv": {
+    "CLOUDFLARE_API_TOKEN": "${localEnv:CLOUDFLARE_API_TOKEN}"
+  }
+}

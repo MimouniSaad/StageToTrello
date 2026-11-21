@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Tests + couverture ; échoue sous les seuils (lignes 95 %, branches 85 %, fonctions 95 %)
+      - name: Tests et couverture
+        shell: bash
+        run: npm run coverage --silent | tee coverage.txt
+      - name: Résumé de la couverture
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Couverture de tests"
+            echo '```'
+            sed -n '/start of coverage report/,/end of coverage report/p' coverage.txt | sed 's/^# //'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  lint:
+    name: Lint de l'extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run version:check
+      - name: ESLint (erreurs probables dans le code)
+        run: npm run lint:js
+      - name: Prettier (mise en forme)
+        run: npm run format:check
+      - name: web-ext lint (règles de Mozilla pour l'extension)
+        run: npm run lint
+
+  package:
+    name: Paquet AMO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stagetotrello-zip
+          path: web-ext-artifacts/*.zip
+
+  relay:
+    name: Construction du relais
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx wrangler deploy --dry-run --outdir dist
+        working-directory: relay
+
+  source-main:
+    name: Source de la PR vers main
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier que la PR vient de develop
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::Seule develop peut être fusionnée dans main (reçu : $HEAD_REF)."
+            exit 1
+          fi
+          echo "OK : la PR vient de develop."

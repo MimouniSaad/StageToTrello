@@ -1,7 +1,7 @@
 // Client Trello : identifiants dans l'en-tête Authorization, erreurs lisibles.
 const TrelloApi = (() => {
   const API = "https://api.trello.com/1";
-  const MAX_DESC_CHARS = 16000;   // la limite Trello est de 16 384
+  const MAX_DESC_CHARS = 16000; // la limite Trello est de 16 384
 
   class TrelloError extends Error {
     constructor(message, status) {
@@ -38,10 +38,14 @@ const TrelloApi = (() => {
     }
 
     async function listBoards() {
-      const boards = await request("GET", "/members/me/boards",
-                                   { fields: "name", filter: "open", lists: "open" });
+      const boards = await request("GET", "/members/me/boards", {
+        fields: "name",
+        filter: "open",
+        lists: "open",
+      });
       return boards.map((b) => ({
-        id: b.id, name: b.name,
+        id: b.id,
+        name: b.name,
         lists: (b.lists || []).map((l) => ({ id: l.id, name: l.name })),
       }));
     }
@@ -56,11 +60,15 @@ const TrelloApi = (() => {
 
     async function createCard({ listId, name, desc, labelIds, url }) {
       const card = await request("POST", "/cards", {
-        idList: listId, name, desc: desc.slice(0, MAX_DESC_CHARS), idLabels: labelIds.join(","),
+        idList: listId,
+        name,
+        desc: desc.slice(0, MAX_DESC_CHARS),
+        idLabels: labelIds.join(","),
       });
       try {
         await request("POST", `/cards/${card.id}/attachments`, { url });
-      } catch (e) {  // la carte existe déjà : on ne fait pas échouer l'ajout
+      } catch (e) {
+        // la carte existe déjà : on ne fait pas échouer l'ajout
         console.warn(`Lien non joint à la carte : ${e.message}`);
       }
       return { shortUrl: card.shortUrl };

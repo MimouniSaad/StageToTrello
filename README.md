@@ -1,6 +1,12 @@
 # StageToTrello
 
+[![CI](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml)
+[![Version sur AMO](https://img.shields.io/amo/v/stagetotrello?label=Firefox%20Add-ons)](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)
+[![Utilisateurs](https://img.shields.io/amo/users/stagetotrello?label=utilisateurs)](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)
+
 Extension Firefox qui transforme une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**. Rien à installer en dehors de Firefox : l'utilisateur clique sur **Connecter Trello**, autorise l'accès, et c'est prêt.
+
+**[Installer StageToTrello depuis addons.mozilla.org](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)**
 
 Chaque carte contient :
 
@@ -21,14 +27,15 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 2. [Comment ça marche](#comment-ça-marche)
 3. [Contenu du dépôt](#contenu-du-dépôt)
 4. [Mise en place (propriétaire de l'extension)](#mise-en-place-propriétaire-de-lextension)
-5. [Publier une nouvelle version](#publier-une-nouvelle-version)
-6. [Utilisation](#utilisation)
-7. [Détail du fonctionnement](#détail-du-fonctionnement)
-8. [Tests](#tests)
-9. [Sécurité et confidentialité](#sécurité-et-confidentialité)
-10. [Limites connues](#limites-connues)
-11. [Dépannage](#dépannage)
-12. [Licence](#licence)
+5. [Développer dans le conteneur](#développer-dans-le-conteneur)
+6. [Publier une nouvelle version](#publier-une-nouvelle-version)
+7. [Utilisation](#utilisation)
+8. [Détail du fonctionnement](#détail-du-fonctionnement)
+9. [Tests](#tests)
+10. [Sécurité et confidentialité](#sécurité-et-confidentialité)
+11. [Limites connues](#limites-connues)
+12. [Dépannage](#dépannage)
+13. [Licence](#licence)
 
 ---
 
@@ -36,7 +43,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 
 Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente sur ordinateur) :
 
-1. Installe **StageToTrello** depuis le site des modules complémentaires de Firefox (<https://addons.mozilla.org>) : le lien direct sera ajouté ici dès la publication.
+1. Installe **StageToTrello** depuis le site des modules complémentaires de Firefox : <https://addons.mozilla.org/fr/firefox/addon/stagetotrello/> → **Ajouter à Firefox**.
 2. Épingle le bouton dans la barre d'outils (icône de pièce de puzzle → ⚙ à côté de StageToTrello → **Épingler à la barre d'outils**).
 3. Ouvre le popup, clique sur **Connecter Trello** et autorise l'accès. C'est tout : aucune clé à créer, aucun réglage.
 
@@ -77,6 +84,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 │   └── lib/
 │       ├── core.js           # Logique pure : prompt, lecture de réponse, JSON-LD, mode de secours
 │       ├── add.js            # Ajout d'une offre : lecture de la page, analyse, création de la carte
+│       ├── markdown.js       # Conversion HTML → Markdown de la description de la carte
 │       ├── relay.js          # Client du relais (analyse par IA, compteur quotidien)
 │       ├── quota.js          # Limite quotidienne : copie locale du compteur du relais, temps d'attente
 │       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
@@ -85,7 +93,11 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
+├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
+├── .devcontainer/            # Conteneur de développement (Node 22, npm ci, port du relais local)
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
+├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
+├── scripts/release-notes.js  # Notes d'une version extraites de CHANGELOG.md (workflow Release)
 ├── package.json              # Scripts test, lint, package ; web-ext en dépendance de développement
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
@@ -103,7 +115,7 @@ Ces étapes ne sont à faire qu'une fois, par la personne qui publie l'extension
 
 `extension/config.js` est commité avec les valeurs de l'extension publiée. Pour pointer vers ta propre app Trello ou ton propre relais (fork), modifie-le :
 
-| Champ | Description |
+| Champ | Description | `lib/markdown.js`, `lib/core.js` | Convertie en **Markdown** (affiché par Trello) : titres, sous-titres, paragraphes, gras, italique, listes et liens conservés ; scripts, images, formulaires et texte caché ignorés ; « faux titres » (`<strong>Missions :</strong>`, lignes en majuscules) transformés en titres. Source : description JSON-LD si elle dépasse 300 caractères, sinon l'article extrait par Readability. Coupée à 16 000 caractères sur une fin de paragraphe (limite Trello : 16 384). L'IA reçoit toujours le texte brut |
 |---|---|
 | `TRELLO_KEY` | Clé de l'application Trello (étape 1) |
 | `RELAY_URL` | Adresse du relais déployé (`https://stage-trello-relay.mimsaad03.workers.dev`, voir `relay/README.md`) |
@@ -131,12 +143,45 @@ Cette adresse dépend de l'identifiant de l'extension (`browser_specific_setting
 
 Les installations permanentes passent par la version publiée sur AMO (voir ci-dessous).
 
+## Développer dans le conteneur
+
+Le dépôt fournit un conteneur de développement (`.devcontainer/devcontainer.json`) : Node 22, dépendances installées automatiquement (`npm ci`), GitHub CLI, extensions ESLint et Prettier pour VS Code. Tout le monde travaille avec le même environnement que la CI.
+
+**Prérequis :** Docker.
+
+**Ouvrir le projet dans le conteneur :**
+
+- VS Code : `F1` → *Dev Containers: Reopen in Container* ;
+- IDE JetBrains : *File → Remote Development → Dev Containers* ;
+- sans IDE :
+
+  ```bash
+  npx @devcontainers/cli up --workspace-folder .
+  npx @devcontainers/cli exec --workspace-folder . bash -c "npm test && npm run lint:js && npm run format:check && npm run package"
+  ```
+
+**Firefox reste sur la machine hôte.** Lancer un navigateur graphique depuis Docker est complexe et fragile ; le dossier du projet étant partagé avec le conteneur, on charge `extension/` comme d'habitude depuis `about:debugging#/runtime/this-firefox`. Le conteneur sert au code, aux tests, au lint et au paquet.
+
+**Relais en local :** `cd relay && npx wrangler dev`, accessible sur le port 8787 (redirigé automatiquement par l'IDE).
+
+**Jeton Cloudflare :** nécessaire seulement pour `wrangler deploy`. Il est recopié depuis la machine hôte (`remoteEnv` + `${localEnv:CLOUDFLARE_API_TOKEN}`) et n'est jamais écrit dans le dépôt. Charge-le **avant** de créer le conteneur :
+
+```bash
+read -s "CLOUDFLARE_API_TOKEN?Jeton Cloudflare : " && export CLOUDFLARE_API_TOKEN && echo
+```
+
+Utilise un jeton d'API à droits limités (modèle « Edit Cloudflare Workers », avec une date d'expiration), jamais la Global API Key.
+
 ## Publier une nouvelle version
 
-Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`.
+Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
 
 1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
-2. **Version** : incrémente `"version"` dans `extension/manifest.json` (ex. `3.0` → `3.1`). Mozilla refuse de signer deux fois la même version.
+2. **Version** (SemVer `MAJEUR.MINEUR.CORRECTIF`) :
+   - **CORRECTIF** (`3.0.1`) : correction de bug ; **MINEUR** (`3.1.0`) : nouvelle fonctionnalité ou nouvel outillage ; **MAJEUR** (`4.0.0`) : changement incompatible (par exemple une API du relais qui oblige à mettre à jour l'extension) ;
+   - mets la même version dans `extension/manifest.json` et `package.json`, et transforme la section `[Non publié]` de `CHANGELOG.md` en `[x.y.z] - AAAA-MM-JJ` ; `npm run version:check` (aussi lancé par la CI) vérifie la cohérence ;
+   - une seule version pour tout le dépôt : une version qui ne touche pas `extension/` (CI, relais, documentation) est étiquetée et publiée sur GitHub, mais **pas envoyée sur AMO** ;
+   - Mozilla refuse de signer deux fois la même version.
 3. **Relais** : si `relay/` ou `extension/lib/core.js` (dont le relais réutilise le prompt) a changé, redéploie-le d'abord, en restant compatible avec la version de l'extension déjà publiée :
 
    ```bash
@@ -156,8 +201,15 @@ Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chor
 6. **Publier sur `main`** : PR `develop` → `main`, puis étiquette la version :
 
    ```bash
-   git checkout main && git pull && git tag v<version> && git push origin v<version>
+   git checkout main && git pull && git tag -a v<version> -m "StageToTrello <version>" && git push origin v<version>
    ```
+
+   L'étiquette déclenche le workflow **Release** (`.github/workflows/release.yml`), qui :
+   - vérifie que l'étiquette correspond à la version du manifeste (`v3.1.0` ↔ `3.1.0`) et qu'elle est sur un commit de `main` ;
+   - relance `npm run version:check` et `npm run package` ;
+   - crée la **GitHub Release** « StageToTrello <version> » avec le zip et les notes de la section correspondante de `CHANGELOG.md` (`scripts/release-notes.js`).
+
+   C'est ce zip, construit et vérifié par la CI, qu'on envoie ensuite sur AMO (étape 5) si `extension/` a changé.
 
 7. **Politique de confidentialité** : si les données traitées changent, mets à jour `PRIVACY.md` (et sa date) dans la même version, ainsi que le champ correspondant sur AMO.
 
@@ -201,20 +253,38 @@ La logique (prompt, lecture des réponses, JSON-LD, mode de secours, limite quot
 npm test
 ```
 
-Le popup et la connexion Trello se testent à la main dans Firefox (étape 4 de la mise en place).
+**Couverture** (lancée par la CI dans le job « Tests », avec un résumé dans l'onglet *Summary* de l'exécution) :
+
+```bash
+npm run coverage
+```
+
+Elle mesure `extension/lib/` (hors `Readability.js`, code tiers) et `relay/src/`, et échoue sous les seuils : **95 % des lignes, 85 % des branches, 95 % des fonctions**. Valeurs au moment de la mise en place : 100 % des lignes, 90,6 % des branches, 100 % des fonctions.
+
+Le popup (`popup.js`), le script d'arrière-plan (`background.js`, testé en partie dans un contexte isolé) et le script injecté (`page.js`) dépendent du navigateur et ne sont pas comptés ; ils se testent à la main dans Firefox (étape 4 de la mise en place).
+
+### Qualité du code
+
+```bash
+npm run lint:js        # ESLint : erreurs probables (variables inutilisées, globales inconnues…)
+npm run format:check   # Prettier : vérifie la mise en forme
+npm run format         # Prettier : met en forme tous les fichiers
+```
+
+La configuration ESLint (`eslint.config.mjs`) déclare un environnement par dossier : `extension/` (scripts classiques du navigateur et objets partagés `Core`, `Quota`…), `relay/src/` (Cloudflare Workers), `relay/test/` et `tests/`, `scripts/` (Node). Prettier (`.prettierrc.json`) exclut le code tiers, les fixtures des tests et le Markdown (`.prettierignore`). Les deux tournent dans le job CI « Lint de l'extension » : une PR avec une erreur ESLint ou un fichier mal formaté est bloquée. Le commit de formatage initial est ignoré par `git blame` (`.git-blame-ignore-revs`).
 
 ## Sécurité et confidentialité
 
 - **Clé Groq** : elle n'est **pas** dans l'extension. Elle est enregistrée comme secret du relais Cloudflare (`wrangler secret put GROQ_API_KEY`) et ne doit **jamais** apparaître dans le dépôt Git. En cas de fuite, régénère-la sur la console Groq puis remplace le secret, sans mise à jour de l'extension.
 - **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
-- **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde qu'un compteur quotidien lié à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
+- **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde que des compteurs quotidiens liés à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
 - **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
 
 - **Politique de confidentialité** : [`PRIVACY.md`](PRIVACY.md), accessible depuis le lien « Confidentialité » du popup (avant et après la connexion).
 
 ## Limites connues
 
-- **40 analyses par jour et par compte Trello** au maximum, comptées par le relais (remise à zéro à minuit UTC, soit 01:00 ou 02:00 en France). Seules les analyses réussies comptent ; les offres qui publient un `JobPosting` complet sont ajoutées sans IA et ne comptent pas. Quand la limite est atteinte, le popup indique le temps restant avant la réinitialisation.
+- **40 analyses par jour et par compte Trello** au maximum, comptées par le relais (remise à zéro à minuit UTC, soit 01:00 ou 02:00 en France). Seules les analyses qui trouvent une offre comptent : les offres qui publient un `JobPosting` complet sont ajoutées sans IA et ne comptent pas, et les pages sans offre sont gratuites dans la limite de 20 par jour (au-delà, elles comptent aussi). Quand la limite est atteinte, le popup indique le temps restant avant la réinitialisation.
 - Il faut l'**URL directe de l'offre**. Sur une page de liste ou une page générique, l'extension répond « Aucune offre trouvée sur cette page. ».
 - Les pages protégées de Firefox (`about:`, boutique d'extensions) ne peuvent pas être lues.
 - Sans données `JobPosting`, la description est le texte extrait par Readability : il peut contenir des éléments parasites ; relis la carte en cas de doute.

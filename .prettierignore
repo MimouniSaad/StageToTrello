@@ -1,0 +1,17 @@
+# Prettier lit aussi le .gitignore (node_modules/, venv/, web-ext-artifacts/… déjà exclus).
+
+# Code tiers, copié sans modification
+extension/lib/Readability.js
+extension/THIRD_PARTY_NOTICES.txt
+
+# Fichiers comparés caractère par caractère par les tests
+tests/fixtures/
+
+# Fichiers générés
+package-lock.json
+relay/dist/
+relay/.wrangler/
+web-ext-artifacts/
+
+# Documentation rédigée à la main (tableaux et listes alignés volontairement)
+*.md

@@ -9,6 +9,8 @@ workers_dev = true
 GROQ_MODELS = "openai/gpt-oss-120b,openai/gpt-oss-20b"
 # Analyses réussies autorisées par compte Trello et par jour (remise à zéro à minuit UTC)
 DAILY_LIMIT = "40"
+# Pages sans offre analysées gratuitement par compte et par jour ; au-delà, elles comptent
+FREE_MISSES = "20"
 
 # Compteurs par compte Trello et cache des jetons vérifiés.
 # Crée-le avec : npx wrangler kv namespace create USAGE   puis colle l'id ci-dessous.

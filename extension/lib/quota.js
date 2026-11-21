@@ -17,7 +17,8 @@ const Quota = (() => {
   function status(usage, now, limit = (usage && usage.limit) || DAILY_LIMIT) {
     const used = usage && usage.day === dayKey(now) ? usage.count : 0;
     return {
-      used, limit,
+      used,
+      limit,
       remaining: Math.max(0, limit - used),
       blocked: used >= limit,
       resetAt: nextReset(now),
@@ -44,12 +45,23 @@ const Quota = (() => {
   }
 
   function blockedMessage(st, now) {
-    return `Limite de ${st.limit} offres par jour atteinte. Réinitialisation dans ` +
-      `${formatWait(st.resetAt - now)} (à ${formatClock(st.resetAt)}).`;
+    return (
+      `Limite de ${st.limit} offres par jour atteinte. Réinitialisation dans ` +
+      `${formatWait(st.resetAt - now)} (à ${formatClock(st.resetAt)}).`
+    );
   }
 
-  return { DAILY_LIMIT, STORAGE_KEY, dayKey, nextReset, status, fromServer,
-           formatWait, formatClock, blockedMessage };
+  return {
+    DAILY_LIMIT,
+    STORAGE_KEY,
+    dayKey,
+    nextReset,
+    status,
+    fromServer,
+    formatWait,
+    formatClock,
+    blockedMessage,
+  };
 })();
 
 if (typeof module === "object") module.exports = Quota;
