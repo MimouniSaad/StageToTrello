@@ -183,6 +183,11 @@
         border-radius: 2px;
         background: var(--accent);
       }
+      .quota .hint {
+        margin: 6px 0 0;
+        font-size: 11px;
+        opacity: 0.85;
+      }
       .quota.err {
         color: var(--err-text);
       }
@@ -286,6 +291,7 @@
         <div id="quota" class="quota" aria-live="polite">
           <span id="quota-text"></span>
           <div class="bar" aria-hidden="true"><span id="quota-bar"></span></div>
+          <p class="hint">Seules les offres analysées par l'IA sont comptées.</p>
         </div>
       </div>
     </section>

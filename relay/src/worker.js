@@ -1,7 +1,7 @@
 // Relais StageToTrello : garde la clé Groq côté serveur.
 // L'extension envoie le contenu de l'offre avec le jeton Trello de l'utilisateur ;
 // le relais vérifie le jeton, applique la limite quotidienne, construit le prompt
-// et appelle Groq. Rien n'est stocké à part un compteur par compte Trello et par jour.
+// et appelle Groq. Rien n'est stocké à part des compteurs par compte Trello et par jour.
 import Core from "../../extension/lib/core.js";
 
 const TRELLO_API = "https://api.trello.com/1";
@@ -140,8 +140,10 @@ async function extract(request, env, now) {
   if (!member) return fail(401, "unauthorized", "Session Trello expirée, reconnecte-toi.");
 
   const limit = parseInt(env.DAILY_LIMIT, 10) || 40;
+  const freeMisses = parseInt(env.FREE_MISSES, 10) || 20;
   const resetAt = nextReset(now);
   const usageKey = `use:${member}:${dayKey(now)}`;
+  const missKey = `miss:${member}:${dayKey(now)}`;
   const used = parseInt(await env.USAGE.get(usageKey), 10) || 0;
   if (used >= limit) {
     return fail(429, "daily_limit", `Limite de ${limit} offres par jour atteinte.`, {
@@ -168,13 +170,25 @@ async function extract(request, env, now) {
     });
   }
 
-  // Seules les analyses réussies sont comptées.
-  await env.USAGE.put(usageKey, String(used + 1), { expirationTtl: USAGE_TTL });
+  // Seules les analyses qui trouvent une offre sont comptées. Les pages sans offre sont
+  // gratuites dans la limite de FREE_MISSES par jour, puis comptent comme les autres :
+  // le nombre d'appels à Groq par compte et par jour reste borné (limit + freeMisses).
+  const found = Core.parseLlm(result.content, []).found;
+  let counted = found;
+  if (!found) {
+    const missed = parseInt(await env.USAGE.get(missKey), 10) || 0;
+    if (missed < freeMisses) {
+      await env.USAGE.put(missKey, String(missed + 1), { expirationTtl: USAGE_TTL });
+    } else counted = true;
+  }
+  const newUsed = counted ? used + 1 : used;
+  if (counted) await env.USAGE.put(usageKey, String(newUsed), { expirationTtl: USAGE_TTL });
   return json(200, {
     ok: true,
     content: result.content,
     model: result.model,
-    used: used + 1,
+    found,
+    used: newUsed,
     limit,
     resetAt,
   });

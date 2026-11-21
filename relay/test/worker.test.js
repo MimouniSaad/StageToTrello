@@ -147,6 +147,53 @@ test("limite quotidienne : 429 avec resetAt, sans appel à Groq", async () => {
   );
 });
 
+const groqMiss = () => groqOk("FOUND: no\nCOMPANY: \nTITLE: \nLABELS: ");
+const useKey = () => `use:${MEMBER}:${dayKey(Date.now())}`;
+const missKey = () => `miss:${MEMBER}:${dayKey(Date.now())}`;
+
+test("page sans offre : réponse found false, compteur principal inchangé", async () => {
+  mockFetch({ groq: groqMiss });
+  const env = makeEnv();
+  const data = await (await worker.fetch(req("/extract"), env)).json();
+  assert.equal(data.ok, true);
+  assert.equal(data.found, false);
+  assert.equal(data.used, 0);
+  assert.equal(env.USAGE.store.get(useKey()), undefined);
+  assert.equal(env.USAGE.store.get(missKey()), "1");
+});
+
+test("offre trouvée : found true et compteur principal incrémenté", async () => {
+  mockFetch();
+  const env = makeEnv();
+  const data = await (await worker.fetch(req("/extract"), env)).json();
+  assert.equal(data.found, true);
+  assert.equal(env.USAGE.store.get(useKey()), "1");
+  assert.equal(env.USAGE.store.get(missKey()), undefined);
+});
+
+test("au-delà de FREE_MISSES, les pages sans offre comptent dans la limite", async () => {
+  mockFetch({ groq: groqMiss });
+  const env = makeEnv({ FREE_MISSES: "2", DAILY_LIMIT: "3" });
+  for (let i = 0; i < 2; i++) {
+    assert.equal((await (await worker.fetch(req("/extract"), env)).json()).used, 0);
+  }
+  const used = [];
+  for (let i = 0; i < 3; i++)
+    used.push((await (await worker.fetch(req("/extract"), env)).json()).used);
+  assert.deepEqual(used, [1, 2, 3]);
+  assert.equal(env.USAGE.store.get(missKey()), "2");
+  // Limite atteinte : même une page sans offre est refusée, sans appel à Groq
+  assert.equal((await worker.fetch(req("/extract"), env)).status, 429);
+});
+
+test("FREE_MISSES par défaut : 20 pages sans offre gratuites par jour", async () => {
+  mockFetch({ groq: groqMiss });
+  const env = makeEnv();
+  env.USAGE.store.set(missKey(), "19");
+  assert.equal((await (await worker.fetch(req("/extract"), env)).json()).used, 0);
+  assert.equal((await (await worker.fetch(req("/extract"), env)).json()).used, 1);
+});
+
 test("le compteur d'hier n'est pas pris en compte", async () => {
   mockFetch();
   const env = makeEnv({ DAILY_LIMIT: "1" });
