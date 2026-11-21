@@ -1,8 +1,12 @@
 # StageToTrello
 
 [![CI](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/MimouniSaad/StageToTrello/actions/workflows/ci.yml)
+[![Version sur AMO](https://img.shields.io/amo/v/stagetotrello?label=Firefox%20Add-ons)](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)
+[![Utilisateurs](https://img.shields.io/amo/users/stagetotrello?label=utilisateurs)](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)
 
 Extension Firefox qui transforme une offre de stage (ou d'emploi) ouverte dans le navigateur en **carte Trello complète, en un clic**. Rien à installer en dehors de Firefox : l'utilisateur clique sur **Connecter Trello**, autorise l'accès, et c'est prêt.
+
+**[Installer StageToTrello depuis addons.mozilla.org](https://addons.mozilla.org/fr/firefox/addon/stagetotrello/)**
 
 Chaque carte contient :
 
@@ -39,7 +43,7 @@ L'entreprise, l'intitulé du poste et les étiquettes sont déterminés par un m
 
 Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente sur ordinateur) :
 
-1. Installe **StageToTrello** depuis le site des modules complémentaires de Firefox (<https://addons.mozilla.org>) : le lien direct sera ajouté ici dès la publication.
+1. Installe **StageToTrello** depuis le site des modules complémentaires de Firefox : <https://addons.mozilla.org/fr/firefox/addon/stagetotrello/> → **Ajouter à Firefox**.
 2. Épingle le bouton dans la barre d'outils (icône de pièce de puzzle → ⚙ à côté de StageToTrello → **Épingler à la barre d'outils**).
 3. Ouvre le popup, clique sur **Connecter Trello** et autorise l'accès. C'est tout : aucune clé à créer, aucun réglage.
 
