@@ -6,6 +6,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 ## [Non publié]
 
+### Modifié
+- Politique de confidentialité : mention du compteur de pages sans offre conservé par le relais (#118).
+
 ## [3.1.0] - 2026-11-21
 
 Nouveau design du popup, description des cartes mise en forme, et chaîne DevOps complète (CI, protection des branches, release automatique, Dependabot, ESLint et Prettier, conteneur de développement).

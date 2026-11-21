@@ -1,6 +1,6 @@
 # Politique de confidentialité — StageToTrello
 
-*Dernière mise à jour : 18 novembre 2026*
+*Dernière mise à jour : 21 novembre 2026*
 
 StageToTrello est une extension Firefox gratuite et open source qui ajoute l'offre de stage ou d'emploi ouverte dans le navigateur à un tableau Trello. Elle est éditée par Saad Mimouni ; le code source est public : <https://github.com/MimouniSaad/StageToTrello>.
 
@@ -29,7 +29,7 @@ Au clic, l'extension lit dans l'onglet actif : l'adresse de la page, son titre, 
 | Où | Quoi | Durée |
 |---|---|---|
 | Ton profil Firefox (`storage.local`) | Jeton Trello, dernier tableau et dernière liste choisis, option « Envoyer dès l'ouverture », compteur d'analyses du jour | Jusqu'à la déconnexion (lien « Déconnecter ») ou la désinstallation de l'extension |
-| Relais StageToTrello (Cloudflare Workers KV) | Identifiant interne de ton compte Trello et nombre d'analyses du jour, pour appliquer la limite de 40 par jour | 2 jours au plus |
+| Relais StageToTrello (Cloudflare Workers KV) | Identifiant interne de ton compte Trello, nombre d'analyses du jour et nombre de pages sans offre analysées dans la journée, pour appliquer la limite de 40 offres par jour (les pages sans offre ne sont pas comptées, dans la limite de 20 par jour) | 2 jours au plus |
 | Relais StageToTrello (Cloudflare Workers KV) | Empreinte (hash SHA-256) du jeton Trello associée à l'identifiant du compte, pour éviter de redemander à Trello à chaque clic. Le jeton lui-même n'est pas conservé | 1 heure |
 
 Le relais ne conserve ni le contenu des pages, ni les adresses des offres, ni ton nom, ni ton adresse e-mail.
@@ -47,7 +47,7 @@ Le relais ne conserve ni le contenu des pages, ni les adresses des offres, ni to
 - **Ne clique sur « Ajouter à Trello » que sur des offres publiques**, pas sur des pages privées ou sensibles : c'est le contenu de la page active qui est lu.
 - **Déconnexion** : le lien « Déconnecter » efface le jeton Trello de l'extension.
 - **Révoquer l'accès** : dans Trello, ouvre les paramètres de ton compte, rubrique des applications autorisées, et révoque « StageToTrello ».
-- **Tout effacer** : désinstaller l'extension supprime les données stockées dans Firefox ; le compteur du relais disparaît de lui-même au bout de 2 jours.
+- **Tout effacer** : désinstaller l'extension supprime les données stockées dans Firefox ; les compteurs du relais disparaissent d'eux-mêmes au bout de 2 jours.
 
 ## Contact
 
