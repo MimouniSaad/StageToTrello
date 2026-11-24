@@ -1,0 +1,11 @@
+# Hooks Git lancés avant chaque commit : https://pre-commit.com
+# Activation, une fois par clone : pre-commit install
+repos:
+  # gitleaks : bloque le commit si un secret est trouvé dans les fichiers indexés.
+  # Le hook « gitleaks » (et non « gitleaks-system ») compile lui-même la version
+  # ci-dessous : tout le monde utilise la même, quelle que soit celle de sa machine.
+  # Lit la configuration du dépôt (.gitleaks.toml).
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1 # publiée le 12 mars 2026 ; même version qu'en CI
+    hooks:
+      - id: gitleaks
