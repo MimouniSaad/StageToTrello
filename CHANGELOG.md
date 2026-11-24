@@ -6,6 +6,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 ## [Non publié]
 
+### Ajouté
+- Politique de sécurité (`SECURITY.md`) : signalement privé des failles via GitHub, délais indicatifs, périmètre et règles de tests de bonne foi ; lien depuis les modèles de tickets et le README (#69).
+
 ### Modifié
 - Politique de confidentialité : mention du compteur de pages sans offre conservé par le relais (#118).
 

@@ -8,6 +8,7 @@ body:
       value: |
         Merci de prendre le temps de signaler ce problème.
         **Ne colle jamais ton jeton Trello ni aucune clé** dans ce formulaire : il est public.
+        **Faille de sécurité ?** Ne la signale pas ici : utilise le [signalement privé](https://github.com/MimouniSaad/StageToTrello/security/advisories/new) (voir [SECURITY.md](https://github.com/MimouniSaad/StageToTrello/blob/develop/SECURITY.md)).
   - type: input
     id: version-extension
     attributes:

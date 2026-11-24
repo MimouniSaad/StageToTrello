@@ -93,6 +93,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
+├── SECURITY.md               # Politique de sécurité : signalement privé des failles, délais, périmètre
 ├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
 ├── .devcontainer/            # Conteneur de développement (Node 22, npm ci, port du relais local)
 ├── .gitleaks.toml            # Détection de secrets : règles gitleaks (dont clés Groq) et unique exception
@@ -310,6 +311,7 @@ Le premier commit compile gitleaks dans un environnement isolé (quelques minute
 - **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
 
 - **Politique de confidentialité** : [`PRIVACY.md`](PRIVACY.md), accessible depuis le lien « Confidentialité » du popup (avant et après la connexion).
+- **Signaler une faille** : en privé, jamais dans un ticket public. Voir [`SECURITY.md`](SECURITY.md) (signalement privé de GitHub, délais, périmètre).
 
 ## Limites connues
 
