@@ -1,0 +1,28 @@
+# Configuration gitleaks de StageToTrello : https://github.com/gitleaks/gitleaks
+# Lue automatiquement à la racine du dépôt (scan local, hook pre-commit, CI).
+title = "StageToTrello"
+
+# Garder toutes les règles intégrées de gitleaks (AWS, GitHub, Slack, clés privées,
+# generic-api-key…) et y ajouter les nôtres. Sans cette ligne, ce fichier les remplacerait.
+[extend]
+useDefault = true
+
+# Clé d'API Groq : « gsk_ » suivi de 52 caractères alphanumériques.
+# \b de chaque côté : ne pas accrocher le milieu d'une chaîne plus longue.
+# La fausse clé des tests (gsk_secret_value) est trop courte et n'est pas signalée.
+[[rules]]
+id = "groq-api-key"
+description = "Clé d'API Groq (gsk_…)"
+regex = '''\bgsk_[A-Za-z0-9]{52}\b'''
+keywords = ["gsk_"]
+
+# Exception unique : la clé publique de l'application Trello dans extension/config.js.
+# Elle n'est pas secrète par conception : Trello la qualifie de clé publique, elle est
+# lisible dans le paquet publié sur AMO, et seul le jeton de chaque utilisateur (jamais
+# dans le dépôt) donne accès à un compte. On autorise seulement une ligne de la forme
+# TRELLO_KEY: "<32 caractères hexadécimaux>" ; toute autre valeur reste détectée,
+# y compris dans config.js. Pas de « paths » : il exempterait le fichier entier.
+[allowlist]
+description = "Clé publique Trello (TRELLO_KEY), publique par conception"
+regexTarget = "line"
+regexes = ['''TRELLO_KEY:\s*"[0-9a-fA-F]{32}"''']
