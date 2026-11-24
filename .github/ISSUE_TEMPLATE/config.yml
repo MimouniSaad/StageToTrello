@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Signaler une faille de sécurité
+    url: https://github.com/MimouniSaad/StageToTrello/security/advisories/new
+    about: En privé, jamais dans un ticket public. Voir la politique de sécurité (SECURITY.md).
   - name: Support StageToTrello
     url: https://github.com/MimouniSaad/StageToTrello/issues
     about: Consulte les tickets existants avant d'en ouvrir un nouveau.
