@@ -95,6 +95,8 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
 ├── CHANGELOG.md              # Journal des modifications (Keep a Changelog, SemVer)
 ├── .devcontainer/            # Conteneur de développement (Node 22, npm ci, port du relais local)
+├── .gitleaks.toml            # Détection de secrets : règles gitleaks (dont clés Groq) et unique exception
+├── .pre-commit-config.yaml   # Hook pre-commit : gitleaks avant chaque commit
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
 ├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
 ├── scripts/release-notes.js  # Notes d'une version extraites de CHANGELOG.md (workflow Release)
@@ -174,7 +176,7 @@ Utilise un jeton d'API à droits limités (modèle « Edit Cloudflare Workers »
 
 ## Publier une nouvelle version
 
-Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
+Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Secrets`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
 
 1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
 2. **Version** (SemVer `MAJEUR.MINEUR.CORRECTIF`) :
@@ -273,9 +275,36 @@ npm run format         # Prettier : met en forme tous les fichiers
 
 La configuration ESLint (`eslint.config.mjs`) déclare un environnement par dossier : `extension/` (scripts classiques du navigateur et objets partagés `Core`, `Quota`…), `relay/src/` (Cloudflare Workers), `relay/test/` et `tests/`, `scripts/` (Node). Prettier (`.prettierrc.json`) exclut le code tiers, les fixtures des tests et le Markdown (`.prettierignore`). Les deux tournent dans le job CI « Lint de l'extension » : une PR avec une erreur ESLint ou un fichier mal formaté est bloquée. Le commit de formatage initial est ignoré par `git blame` (`.git-blame-ignore-revs`).
 
+### Détection de secrets (gitleaks)
+
+[gitleaks](https://github.com/gitleaks/gitleaks) cherche les secrets (clés Groq, jetons, clés privées, clés d'API connues…) à deux niveaux :
+
+| Niveau | Quand | Portée |
+|---|---|---|
+| Hook [pre-commit](https://pre-commit.com) | avant chaque commit, sur ta machine | fichiers indexés : le commit est refusé si un secret est trouvé |
+| Job CI « Secrets » | sur chaque PR et chaque push | **tout l'historique** du dépôt (`fetch-depth: 0`) |
+
+GitHub ajoute un troisième niveau, réglé dans le dépôt : *Secret scanning* et *Push protection*.
+
+À faire une fois par clone :
+
+```bash
+pipx install pre-commit   # ou : sudo apt install pre-commit
+pre-commit install
+```
+
+Le premier commit compile gitleaks dans un environnement isolé (quelques minutes, une seule fois). Pour vérifier tout le dépôt sans commiter : `pre-commit run --all-files`.
+
+**Configuration** (`.gitleaks.toml`) : toutes les règles intégrées de gitleaks (`useDefault = true`), plus la règle `groq-api-key` (`gsk_` suivi de 52 caractères). Une seule exception, commentée : la ligne `TRELLO_KEY` de `extension/config.js`, clé publique par conception. En cas de faux positif, **ne contourne pas le hook** avec `git commit --no-verify` : ajoute une exception ciblée (une ligne précise, jamais un fichier entier) et commentée dans `.gitleaks.toml`.
+
+**Mettre à jour gitleaks** : la version est figée à deux endroits, à changer ensemble pour que le hook et la CI appliquent les mêmes règles :
+- `rev:` dans `.pre-commit-config.yaml` ;
+- `GITLEAKS_VERSION` et `GITLEAKS_SHA256` dans `.github/workflows/ci.yml` (empreinte de `gitleaks_<version>_linux_x64.tar.gz`, dans le fichier `gitleaks_<version>_checksums.txt` de la release). La CI vérifie cette empreinte avant d'exécuter le binaire.
+
 ## Sécurité et confidentialité
 
 - **Clé Groq** : elle n'est **pas** dans l'extension. Elle est enregistrée comme secret du relais Cloudflare (`wrangler secret put GROQ_API_KEY`) et ne doit **jamais** apparaître dans le dépôt Git. En cas de fuite, régénère-la sur la console Groq puis remplace le secret, sans mise à jour de l'extension.
+- **Secrets dans le dépôt** : gitleaks bloque les secrets avant le commit et en CI sur tout l'historique (voir [Détection de secrets](#détection-de-secrets-gitleaks)).
 - **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
 - **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde que des compteurs quotidiens liés à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
 - **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
