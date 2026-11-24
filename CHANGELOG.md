@@ -11,6 +11,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 ### Sécurité
 - Wrangler figé à une version exacte dans `package-lock.json` (avec son empreinte) ; la CI refuse d'en télécharger une autre version (`npx --no-install`) (#114).
+- Détection de secrets avec gitleaks 8.30.1 : hook pre-commit qui refuse le commit, job CI « Secrets » sur tout l'historique (binaire à empreinte SHA-256 vérifiée), règle dédiée aux clés Groq et unique exception commentée pour la clé publique Trello (#62).
 
 ## [3.1.0] - 2026-11-21
 
