@@ -9,6 +9,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 ### Modifié
 - Politique de confidentialité : mention du compteur de pages sans offre conservé par le relais (#118).
 
+### Sécurité
+- Wrangler figé à une version exacte dans `package-lock.json` (avec son empreinte) ; la CI refuse d'en télécharger une autre version (`npx --no-install`) (#114).
+
 ## [3.1.0] - 2026-11-21
 
 Nouveau design du popup, description des cartes mise en forme, et chaîne DevOps complète (CI, protection des branches, release automatique, Dependabot, ESLint et Prettier, conteneur de développement).
