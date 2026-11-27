@@ -1,0 +1,52 @@
+# Règles Semgrep propres à StageToTrello (#63) : https://semgrep.dev/docs/writing-rules/overview
+# Tests : semgrep --test --config .semgrep/regles.yml .semgrep/regles.js
+rules:
+  # Le contenu des pages (offres d'emploi) est contrôlé par n'importe quel site :
+  # l'insérer comme HTML ou l'exécuter comme du code donnerait à ce site les
+  # droits de l'extension (jeton Trello compris).
+  - id: extension-pas-de-html-brut
+    languages: [javascript]
+    severity: ERROR
+    message: >-
+      Insertion de HTML brut ou exécution de code dynamique dans l'extension :
+      une donnée venant d'une page web pourrait y exécuter du script avec les
+      droits de l'extension. Utilise textContent, document.createElement et
+      appendChild, ou une fonction dédiée, jamais innerHTML, outerHTML,
+      insertAdjacentHTML, document.write, eval ni new Function.
+    paths:
+      include:
+        - "/extension/"
+      exclude:
+        - "/extension/lib/Readability.js" # code tiers, copie vérifiée par empreinte (#64)
+    pattern-either:
+      - pattern: $EL.innerHTML = $X
+      - pattern: $EL.outerHTML = $X
+      - pattern: $EL.insertAdjacentHTML(...)
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+
+  # Les journaux du relais sont lisibles depuis le compte Cloudflare (wrangler tail)
+  # et peuvent être exportés : un jeton ou une clé qui y apparaît est un secret qui fuit.
+  - id: relais-pas-de-secret-dans-les-journaux
+    languages: [javascript]
+    severity: ERROR
+    message: >-
+      Journal du relais qui contient un jeton, une clé ou un en-tête
+      d'authentification : ces journaux sont lisibles depuis Cloudflare et
+      peuvent être exportés. Journalise seulement un statut ou un type d'erreur,
+      jamais la valeur d'un secret.
+    paths:
+      include:
+        - "/relay/src/"
+    patterns:
+      - pattern: console.$LOG(...)
+      - metavariable-regex:
+          metavariable: $LOG
+          regex: ^(log|info|warn|error|debug|trace)$
+      # Un nom de secret n'importe où dans l'appel : variable, propriété,
+      # chaîne ou morceau de gabarit `${…}`
+      - pattern-regex: (?i)(token|authorization|api_?key|secret|password|bearer)
