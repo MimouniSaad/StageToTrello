@@ -251,3 +251,20 @@ test("keywordLabels : au plus 3 étiquettes, celles du titre en premier", () => 
   assert.equal(labels.length, 3);
   assert.equal(labels[0], "Cloud");
 });
+test("cleanTitle : une ville avec des caractères spéciaux est traitée comme du texte", () => {
+  // Sans échappement, « .* » effacerait tout le titre et « (a+)+$ » serait une expression piégée
+  assert.equal(Core.cleanTitle("Stage DevOps - Paris", ".*"), "Stage DevOps - Paris");
+  assert.equal(Core.cleanTitle("Stage DevOps - (a+)+$", "(a+)+$"), "Stage DevOps");
+  assert.equal(Core.cleanTitle("Stage Data (Saint-Denis 93)", "Saint-Denis"), "Stage Data");
+});
+
+test("cleanTitle : une ville démesurée venant de la page est bornée", () => {
+  const city = "x".repeat(100000);
+  const start = Date.now();
+  assert.equal(Core.cleanTitle(`Stage DevOps - ${city}`, city), `Stage DevOps - ${city}`);
+  assert.ok(Date.now() - start < 1000, "traitement trop long");
+});
+
+test("keywordLabels : un nom d'étiquette avec des caractères spéciaux reste littéral", () => {
+  assert.deepEqual(Core.keywordLabels(["C++", "(a+)+$"], "Développeur C++", ""), ["C++"]);
+});

@@ -95,12 +95,16 @@ const Core = (() => {
       .replace(/[̀-ͯ]/g, "")
       .toLowerCase()
       .replace(/[’']/g, " ");
+  // Échappe les caractères spéciaux : la chaîne devient un texte littéral dans une
+  // expression régulière (ni injection de motif, ni motif exponentiel / ReDoS).
   const escapeRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const hasWord = (hay, word) =>
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- mot échappé par escapeRx
     new RegExp(`(^|[^a-z0-9])${escapeRx(word)}($|[^a-z0-9])`).test(hay);
   const nameMatches = (label, n) =>
     n.endsWith("*")
-      ? new RegExp(`(^|[^a-z0-9])${escapeRx(n.slice(0, -1))}`).test(label)
+      ? // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- nom d'étiquette échappé par escapeRx
+        new RegExp(`(^|[^a-z0-9])${escapeRx(n.slice(0, -1))}`).test(label)
       : hasWord(label, n);
 
   // Jusqu'à 3 étiquettes du tableau, celles trouvées dans le titre d'abord.
@@ -139,10 +143,18 @@ TITLE: intitulé du poste, court et propre, sans lieu ni mention "stage de fin d
 LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
   }
 
+  // Une expression fixe par ligne de la réponse de l'IA (FOUND, COMPANY, TITLE, LABELS).
+  const LLM_FIELDS = {
+    FOUND: /^FOUND:[ \t]*(.*)$/im,
+    COMPANY: /^COMPANY:[ \t]*(.*)$/im,
+    TITLE: /^TITLE:[ \t]*(.*)$/im,
+    LABELS: /^LABELS:[ \t]*(.*)$/im,
+  };
+
   function parseLlm(out, labelNames) {
     out = out.replace(/<think>[\s\S]*?<\/think>/g, "");
     const field = (name) => {
-      const m = out.match(new RegExp(`^${name}:[ \\t]*(.*)$`, "mi"));
+      const m = out.match(LLM_FIELDS[name]);
       return m ? m[1].trim() : "";
     };
     const labels = field("LABELS")
@@ -170,6 +182,8 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
     return typeof city === "string" ? city.trim() : "";
   }
 
+  const CITY_MAX = 100;
+
   // Intitulé propre pour « Entreprise - Poste » : retire les mentions H/F, la durée,
   // « (stage de fin d'études) » et la ville connue, puis les séparateurs orphelins.
   function cleanTitle(title, city = "") {
@@ -181,11 +195,16 @@ LABELS: 1 à 3 étiquettes parmi : ${labelNames.join(", ")}`;
       )
       .replace(/[([]?\s*\b\d{1,2}\s*mois\b\s*[)\]]?/gi, " ")
       .replace(/[([]\s*stage de fin d['’]études\s*[)\]]/gi, " ");
-    if (city) {
-      const c = escapeRx(city);
+    // La ville vient du JSON-LD de la page (contrôlé par le site) : bornée en longueur
+    // (aucune vraie ville ne dépasse CITY_MAX caractères), puis échappée par escapeRx.
+    const shortCity = String(city || "").slice(0, CITY_MAX);
+    if (shortCity) {
+      const c = escapeRx(shortCity);
       t = t
+        // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- ville bornée et échappée par escapeRx
         .replace(new RegExp(`\\(\\s*${c}[^()]*\\)`, "gi"), " ")
         .replace(
+          // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- ville bornée et échappée par escapeRx
           new RegExp(`\\s*[-–|,]\\s*${c}(?:\\s*\\(?\\d{2,5}\\)?)?\\s*(?=$|[-–|,(])`, "gi"),
           " ",
         );
