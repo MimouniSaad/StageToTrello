@@ -89,7 +89,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 │       ├── quota.js          # Limite quotidienne : copie locale du compteur du relais, temps d'attente
 │       ├── trello.js         # Client Trello (en-tête OAuth, erreurs lisibles)
 │       ├── page.js           # Script injecté dans l'onglet pour lire la page
-│       └── Readability.js    # Mozilla Readability 0.6.0 (Apache-2.0)
+│       └── Readability.js    # Mozilla Readability 0.6.0 (Apache-2.0), copie vérifiée par tests/readability.test.js
 ├── relay/                    # Relais Cloudflare Worker : garde la clé Groq, vérifie le jeton Trello, limite quotidienne (voir relay/README.md)
 ├── tests/                    # Tests Node (node --test)
 ├── PRIVACY.md                # Politique de confidentialité (lien « Confidentialité » du popup)
@@ -101,7 +101,7 @@ Pour les utilisateurs, rien d'autre que Firefox (version 140 ou plus récente su
 ├── scripts/package.js        # npm run package : vérifications, tests, lint et zip pour AMO
 ├── scripts/check-version.js  # npm run version:check : même version SemVer partout (CI)
 ├── scripts/release-notes.js  # Notes d'une version extraites de CHANGELOG.md (workflow Release)
-├── package.json              # Scripts test, lint, package ; web-ext en dépendance de développement
+├── package.json              # Scripts test, lint, package ; outils (web-ext, ESLint, Prettier, Wrangler) et Readability en dépendances de développement, versions exactes
 └── docs/superpowers/         # Design et plan d'implémentation
 ```
 
@@ -177,7 +177,7 @@ Utilise un jeton d'API à droits limités (modèle « Edit Cloudflare Workers »
 
 ## Publier une nouvelle version
 
-Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Secrets`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
+Branches : on développe sur des branches `feature/`, `fix/`, `refactor/`, `chore/` ou `docs/` fusionnées dans `develop` (branche par défaut) ; `main` ne reçoit que des versions validées, par une PR `develop` → `main`. Les deux branches sont protégées par un ruleset : PR obligatoire, contrôles CI verts (`Tests`, `Lint de l'extension`, `Paquet AMO`, `Construction du relais`, `Dépendances`, `Secrets`, `Source de la PR vers main`), aucun push direct, *force push* ni suppression ; `main` n'accepte que des PR venant de `develop`. Les branches fusionnées sont supprimées automatiquement. Un `Closes #<ticket>` dans la description d'une PR ferme le ticket à la fusion dans `develop`.
 
 1. **Valider sur `develop`** : tester la version dans Firefox (connexion, ajout avec et sans `JobPosting`, page sans offre, limite quotidienne, relais indisponible).
 2. **Version** (SemVer `MAJEUR.MINEUR.CORRECTIF`) :
@@ -302,10 +302,44 @@ Le premier commit compile gitleaks dans un environnement isolé (quelques minute
 - `rev:` dans `.pre-commit-config.yaml` ;
 - `GITLEAKS_VERSION` et `GITLEAKS_SHA256` dans `.github/workflows/ci.yml` (empreinte de `gitleaks_<version>_linux_x64.tar.gz`, dans le fichier `gitleaks_<version>_checksums.txt` de la release). La CI vérifie cette empreinte avant d'exécuter le binaire.
 
+### Audit des dépendances
+
+Le job CI « Dépendances » cherche les failles connues dans **toutes** les dépendances du projet (directes et transitives, environ 450 paquets décrits par `package-lock.json`) :
+
+| Vérification | Ce qu'elle fait |
+|---|---|
+| `npm audit --audit-level=high` | compare chaque paquet à la base d'avis de GitHub ; **bloque** à partir d'une gravité *high* |
+| `npm audit signatures` | vérifie que chaque paquet installé est bien celui publié sur le registre npm (signatures), et les attestations de provenance quand elles existent |
+| OSV-Scanner 2.7.1 | compare `package-lock.json` à la base [OSV](https://osv.dev) (avis GitHub, autres sources et paquets malveillants connus) ; bloque à la moindre vulnérabilité trouvée |
+
+En local :
+
+```bash
+npm audit --audit-level=high
+npm audit signatures
+```
+
+Toutes les dépendances npm sont des **outils de développement** : aucune n'est envoyée aux utilisateurs. Une faille dans l'une d'elles menace la machine du développeur, la CI ou la construction du paquet, d'où l'audit des dépendances de développement comprises. Le seul code tiers présent dans l'extension est **Readability**, copié dans `extension/lib/`.
+
+**Readability** est déclaré en `devDependency` avec sa version exacte (`@mozilla/readability`), pour être surveillé par `npm audit`, OSV-Scanner et Dependabot comme le reste. `tests/readability.test.js` vérifie que la copie `extension/lib/Readability.js` est identique, octet pour octet, au fichier du paquet déclaré, et que `extension/THIRD_PARTY_NOTICES.txt` indique la même version. Quand Dependabot propose une nouvelle version, ce test échoue tant que la copie n'est pas à jour :
+
+1. `cp node_modules/@mozilla/readability/Readability.js extension/lib/Readability.js` ;
+2. mettre à jour la version dans `extension/THIRD_PARTY_NOTICES.txt` (titre et nom du paquet) et dans « Contenu du dépôt » ci-dessus ;
+3. tester l'extension dans Firefox : c'est du code envoyé aux utilisateurs.
+
+**Face à une alerte**, dans cet ordre :
+
+1. **Mettre à jour** : si une version corrigée existe, fusionner la PR de Dependabot, ou mettre à jour la dépendance directe concernée.
+2. **Forcer une version saine d'une dépendance transitive** quand la dépendance directe n'est pas encore corrigée : champ [`overrides`](https://docs.npmjs.com/cli/configuring-npm/package-json#overrides) de `package.json`, à retirer dès que possible.
+3. **Accepter le risque, par écrit**, seulement si la faille ne peut pas nous concerner (fonction jamais utilisée, outil absent du paquet publié) ou s'il n'existe aucune correction : exception dans un fichier `osv-scanner.toml` avec la raison et une date d'expiration (`ignoreUntil`), mentionnée dans la PR. Ne jamais désactiver le job ni baisser le seuil pour faire passer une PR.
+
+Mettre à jour OSV-Scanner : changer ensemble `OSV_SCANNER_VERSION` et `OSV_SCANNER_SHA256` dans `.github/workflows/ci.yml` (empreinte de `osv-scanner_linux_amd64`, dans le fichier `osv-scanner_SHA256SUMS` de la release).
+
 ## Sécurité et confidentialité
 
 - **Clé Groq** : elle n'est **pas** dans l'extension. Elle est enregistrée comme secret du relais Cloudflare (`wrangler secret put GROQ_API_KEY`) et ne doit **jamais** apparaître dans le dépôt Git. En cas de fuite, régénère-la sur la console Groq puis remplace le secret, sans mise à jour de l'extension.
 - **Secrets dans le dépôt** : gitleaks bloque les secrets avant le commit et en CI sur tout l'historique (voir [Détection de secrets](#détection-de-secrets-gitleaks)).
+- **Dépendances** : failles connues et authenticité des paquets vérifiées en CI à chaque PR (voir [Audit des dépendances](#audit-des-dépendances)).
 - **Jeton Trello** : propre à chaque utilisateur, stocké uniquement dans le profil Firefox (`storage.local`). Il donne accès en lecture et écriture au compte Trello ; l'utilisateur peut le révoquer depuis les réglages de son compte Trello, rubrique applications.
 - **Données transmises** : au clic, le début du texte de la page est envoyé au relais, qui le transmet à Groq sans le conserver ; la description est envoyée à Trello. Le relais ne garde que des compteurs quotidiens liés à l'identifiant Trello (2 jours au plus) et un cache d'une heure de la vérification du jeton, sous forme hachée. Le manifeste le déclare (`data_collection_permissions` : `websiteContent`). Consulte les conditions d'utilisation de Groq et n'utilise l'extension que sur des offres publiques, pas sur des pages privées ou sensibles.
 - **Permissions** : `activeTab` (lire la page active au clic), `storage`, `identity` (connexion Trello), `notifications` (résultat de l'ajout quand le popup est fermé), et l'accès à `api.trello.com` et au relais `stage-trello-relay.mimsaad03.workers.dev` uniquement.
