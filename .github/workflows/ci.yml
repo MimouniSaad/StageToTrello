@@ -121,10 +121,15 @@ jobs:
           python-version: "3.12"
       - name: Installer Semgrep (version figée)
         run: pip install semgrep==1.187.0
-      # Règles publiques du registre Semgrep ; les règles maison viendront dans une PR suivante.
+      - name: Tests des règles maison
+        run: semgrep --test --config .semgrep/regles.yml .semgrep/regles.js
+      # Règles publiques du registre Semgrep et règles maison (.semgrep/regles.yml).
       # --metrics=off : aucune télémétrie ; --error : échoue au moindre résultat
-      - name: Semgrep (règles publiques)
-        run: semgrep scan --metrics=off --error --config p/default --config p/secrets extension relay/src scripts
+      - name: Semgrep (règles publiques et règles maison)
+        run: >-
+          semgrep scan --metrics=off --error
+          --config p/default --config p/secrets --config .semgrep/regles.yml
+          extension relay/src scripts
 
   secrets:
     name: Secrets
