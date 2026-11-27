@@ -68,6 +68,7 @@ jobs:
         with:
           name: stagetotrello-zip
           path: web-ext-artifacts/*.zip
+
   relay:
     name: Construction du relais
     runs-on: ubuntu-latest
@@ -80,6 +81,36 @@ jobs:
       - run: npm ci
       - run: npx --no-install wrangler deploy --dry-run --outdir dist
         working-directory: relay
+
+  dependency:
+    name: Dépendances
+    runs-on: ubuntu-latest
+    env:
+      # OSV-Scanner (Google) : base OSV, qui agrège GHSA et les paquets malveillants connus
+      OSV_SCANNER_VERSION: 2.7.1
+      # SHA-256 officielle de osv-scanner_linux_amd64 (osv-scanner_SHA256SUMS de la release)
+      OSV_SCANNER_SHA256: fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm audit (bloque à partir de high)
+        run: npm audit --audit-level=high
+      - name: Signatures et provenance des paquets (registre npm)
+        run: npm audit signatures
+      # installation OSV-SCANNER
+      - name: Installer OSV-Scanner (version figée, empreinte vérifiée)
+        run: |
+          file="osv-scanner_linux_amd64"
+          curl -sSfLO "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${file}"
+          echo "${OSV_SCANNER_SHA256}  ${file}" | sha256sum -c -
+          chmod +x "$file"
+      - name: OSV-Scanner sur package-lock.json
+        run: ./osv-scanner_linux_amd64 scan source --lockfile package-lock.json
+
   secrets:
     name: Secrets
     runs-on: ubuntu-latest
