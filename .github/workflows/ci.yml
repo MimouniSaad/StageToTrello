@@ -111,6 +111,21 @@ jobs:
       - name: OSV-Scanner sur package-lock.json
         run: ./osv-scanner_linux_amd64 scan source --lockfile package-lock.json
 
+  sast:
+    name: SAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Installer Semgrep (version figée)
+        run: pip install semgrep==1.187.0
+      # Règles publiques du registre Semgrep ; les règles maison viendront dans une PR suivante.
+      # --metrics=off : aucune télémétrie ; --error : échoue au moindre résultat
+      - name: Semgrep (règles publiques)
+        run: semgrep scan --metrics=off --error --config p/default --config p/secrets extension relay/src scripts
+
   secrets:
     name: Secrets
     runs-on: ubuntu-latest
